@@ -379,7 +379,7 @@ export default function LeadSourcing() {
               )}
             </>
           ) : (
-            /* Company selected — show contacts */
+            /* Company selected — show info + CSV import for real names */
             <>
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" onClick={handleBackToCompanies} className="gap-1.5">
@@ -387,7 +387,7 @@ export default function LeadSourcing() {
                 </Button>
               </div>
 
-              {/* Company Header + Email Pattern */}
+              {/* Company Info Card */}
               <Card>
                 <CardHeader className="pb-3">
                   <div className="flex items-center gap-3">
@@ -400,7 +400,7 @@ export default function LeadSourcing() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-sm">Email Pattern</Label>
@@ -427,59 +427,101 @@ export default function LeadSourcing() {
                       />
                     </div>
                   </div>
-                  {companyDomain && contacts[0] && (
-                    <div className="mt-3 p-2 bg-muted/30 rounded-md">
-                      <p className="text-xs text-muted-foreground">Preview: <span className="font-mono text-foreground">{generateEmail(contacts[0].firstName, contacts[0].lastName, companyDomain, emailPattern)}</span></p>
+                  {companyDomain && (
+                    <div className="p-2 bg-muted/30 rounded-md">
+                      <p className="text-xs text-muted-foreground">Example email: <span className="font-mono text-foreground">{generateEmail("john", "smith", companyDomain, emailPattern)}</span></p>
                     </div>
                   )}
+
+                  {/* Instructions */}
+                  <div className="p-3 border border-primary/20 bg-primary/5 rounded-lg space-y-2">
+                    <p className="text-sm font-medium">Get real contacts for {selectedCompany.name}:</p>
+                    <ol className="text-xs text-muted-foreground space-y-1 list-decimal list-inside">
+                      <li>Go to <span className="font-medium text-foreground">Scott's Directories</span> → search "{selectedCompany.name}" → filter by Estimator, Buyer, PM</li>
+                      <li>Or go to <span className="font-medium text-foreground">LinkedIn Sales Navigator</span> → search "{selectedCompany.name}" + job titles</li>
+                      <li>Export the names as CSV</li>
+                      <li>Drop the CSV below — emails will be auto-generated using the pattern above</li>
+                    </ol>
+                  </div>
                 </CardContent>
               </Card>
 
-              {/* Contacts */}
-              {isLoadingContacts ? (
-                <Card>
-                  <CardContent className="py-8 text-center">
-                    <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">Finding contacts at {selectedCompany.name}...</p>
-                  </CardContent>
-                </Card>
-              ) : contacts.length > 0 ? (
+              {/* CSV Drop for this company */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">Import Contacts for {selectedCompany.name}</CardTitle>
+                  <p className="text-xs text-muted-foreground">Drop your CSV from Scott's or Sales Navigator. Emails will be generated using {emailPattern}@{companyDomain || "domain"}.</p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"}`}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={handleFileDrop}
+                  >
+                    <Upload className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                    <p className="text-sm font-medium">Drop CSV here</p>
+                    <p className="text-xs text-muted-foreground mt-1">First Name, Last Name, Title columns</p>
+                    <input type="file" accept=".csv" onChange={handleFileSelect} className="opacity-0 cursor-pointer" style={{ position: 'relative', marginTop: '8px' }} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Imported CSV contacts for this company */}
+              {csvResults.length > 0 && (
                 <Card>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">Contacts at {selectedCompany.name} ({contacts.length})</CardTitle>
+                      <CardTitle className="text-base">Contacts at {selectedCompany.name} ({csvResults.length})</CardTitle>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" onClick={selectAll}>
-                          {selectedContacts.size === contacts.length ? "Deselect All" : "Select All"}
+                        <Button variant="outline" size="sm" onClick={() => {
+                          if (selectedCsvResults.size === csvResults.length) setSelectedCsvResults(new Set());
+                          else setSelectedCsvResults(new Set(csvResults.map((_, i) => i)));
+                        }}>
+                          {selectedCsvResults.size === csvResults.length ? "Deselect All" : "Select All"}
                         </Button>
                         <Button
                           size="sm"
-                          disabled={selectedContacts.size === 0 || createBulk.isPending}
-                          onClick={importSelected}
+                          disabled={selectedCsvResults.size === 0 || createBulk.isPending}
+                          onClick={() => {
+                            const leadsToImport = csvResults
+                              .filter((_, i) => selectedCsvResults.has(i))
+                              .map((r: any) => ({
+                                firstName: r.firstName, lastName: r.lastName,
+                                email: r.email || generateEmail(r.firstName, r.lastName, companyDomain, emailPattern),
+                                jobTitle: r.jobTitle || undefined,
+                                company: selectedCompany.name,
+                                companyType: category as any,
+                                city: selectedCompany.city || r.city || undefined,
+                                region: region !== "all" ? region as any : undefined,
+                                source: "import" as const,
+                              }));
+                            createBulk.mutate({ leads: leadsToImport });
+                          }}
                           className="gap-2"
                         >
                           {createBulk.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                          Import {selectedContacts.size} to Database
+                          Import {selectedCsvResults.size} to Database
                         </Button>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">
-                      {contacts.map((contact, idx) => {
-                        const email = contact.email || generateEmail(contact.firstName, contact.lastName, companyDomain, emailPattern);
+                      {csvResults.map((r: any, idx) => {
+                        const email = r.email || generateEmail(r.firstName, r.lastName, companyDomain, emailPattern);
                         return (
                           <div
                             key={idx}
-                            onClick={() => toggleContact(idx)}
+                            onClick={() => { const n = new Set(selectedCsvResults); if (n.has(idx)) n.delete(idx); else n.add(idx); setSelectedCsvResults(n); }}
                             className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
-                              selectedContacts.has(idx) ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/50"
+                              selectedCsvResults.has(idx) ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/50"
                             }`}
                           >
                             <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                              selectedContacts.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                              selectedCsvResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
                             }`}>
-                              {selectedContacts.has(idx) && (
+                              {selectedCsvResults.has(idx) && (
                                 <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
                                   <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                                 </svg>
@@ -487,8 +529,8 @@ export default function LeadSourcing() {
                             </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="font-medium text-sm">{contact.firstName} {contact.lastName}</span>
-                                {contact.jobTitle && <Badge variant="secondary" className="text-xs">{contact.jobTitle}</Badge>}
+                                <span className="font-medium text-sm">{r.firstName} {r.lastName}</span>
+                                {r.jobTitle && <Badge variant="secondary" className="text-xs">{r.jobTitle}</Badge>}
                               </div>
                               {email && (
                                 <div className="flex items-center gap-1.5 mt-1">
@@ -504,7 +546,7 @@ export default function LeadSourcing() {
                     </div>
                   </CardContent>
                 </Card>
-              ) : null}
+              )}
             </>
           )}
         </TabsContent>
