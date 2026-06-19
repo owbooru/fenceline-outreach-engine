@@ -36,6 +36,11 @@ export default function LeadSourcing() {
   const [selectedLiResults, setSelectedLiResults] = useState<Set<number>>(new Set());
   const [isLinkedInScraping, setIsLinkedInScraping] = useState(false);
 
+  // CSV import state
+  const [csvResults, setCsvResults] = useState<any[]>([]);
+  const [selectedCsvResults, setSelectedCsvResults] = useState<Set<number>>(new Set());
+  const [isDragging, setIsDragging] = useState(false);
+
   const createBulk = trpc.leads.createBulk.useMutation({
     onSuccess: (data) => {
       toast.success(`${data.count} leads imported successfully`);
@@ -149,6 +154,143 @@ export default function LeadSourcing() {
     createBulk.mutate({ leads: leadsToImport });
   };
 
+  // CSV handlers
+  const generateEmailFromCsv = (firstName: string, lastName: string, company: string) => {
+    const domain = company.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20) + ".com";
+    return `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+  };
+
+  const parseCsv = (text: string) => {
+    const lines = text.trim().split("\n");
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ""));
+    
+    // Map common Sales Navigator column names
+    const colMap: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      if (h.includes("first") && h.includes("name")) colMap.firstName = String(i);
+      else if (h.includes("last") && h.includes("name")) colMap.lastName = String(i);
+      else if (h === "first name" || h === "firstname") colMap.firstName = String(i);
+      else if (h === "last name" || h === "lastname") colMap.lastName = String(i);
+      else if (h.includes("title") || h.includes("position") || h.includes("job")) colMap.jobTitle = String(i);
+      else if (h.includes("company") || h.includes("organization")) colMap.company = String(i);
+      else if (h.includes("location") || h.includes("geography") || h.includes("city")) colMap.city = String(i);
+      else if (h.includes("linkedin") || h.includes("url") || h.includes("profile")) colMap.linkedinUrl = String(i);
+      else if (h.includes("email")) colMap.email = String(i);
+    });
+
+    // If no mapped columns found, try positional (first,last,title,company,location)
+    if (!colMap.firstName && headers.length >= 2) {
+      colMap.firstName = "0";
+      colMap.lastName = "1";
+      if (headers.length >= 3) colMap.jobTitle = "2";
+      if (headers.length >= 4) colMap.company = "3";
+      if (headers.length >= 5) colMap.city = "4";
+      if (headers.length >= 6) colMap.linkedinUrl = "5";
+    }
+
+    return lines.slice(1).map(line => {
+      // Handle CSV with quoted fields
+      const cols: string[] = [];
+      let current = "";
+      let inQuotes = false;
+      for (const char of line) {
+        if (char === '"') { inQuotes = !inQuotes; }
+        else if (char === ',' && !inQuotes) { cols.push(current.trim()); current = ""; }
+        else { current += char; }
+      }
+      cols.push(current.trim());
+
+      const firstName = cols[parseInt(colMap.firstName || "0")] || "";
+      const lastName = cols[parseInt(colMap.lastName || "1")] || "";
+      const company = cols[parseInt(colMap.company || "3")] || "";
+      const jobTitle = cols[parseInt(colMap.jobTitle || "2")] || "";
+      const city = cols[parseInt(colMap.city || "4")] || "";
+      const linkedinUrl = cols[parseInt(colMap.linkedinUrl || "5")] || "";
+      const existingEmail = colMap.email ? cols[parseInt(colMap.email)] : "";
+
+      if (!firstName && !lastName) return null;
+
+      return {
+        firstName,
+        lastName,
+        jobTitle,
+        company,
+        city,
+        linkedinUrl: linkedinUrl.startsWith("http") ? linkedinUrl : undefined,
+        email: existingEmail || (firstName && lastName && company ? generateEmailFromCsv(firstName, lastName, company) : undefined),
+      };
+    }).filter(Boolean);
+  };
+
+  const handleFileDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith(".csv")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const results = parseCsv(text);
+        setCsvResults(results);
+        setSelectedCsvResults(new Set(results.map((_, i) => i)));
+        toast.success(`Parsed ${results.length} contacts from CSV`);
+      };
+      reader.readAsText(file);
+    } else {
+      toast.error("Please upload a .csv file");
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.name.endsWith(".csv")) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const text = ev.target?.result as string;
+        const results = parseCsv(text);
+        setCsvResults(results);
+        setSelectedCsvResults(new Set(results.map((_, i) => i)));
+        toast.success(`Parsed ${results.length} contacts from CSV`);
+      };
+      reader.readAsText(file);
+    } else {
+      toast.error("Please upload a .csv file");
+    }
+  };
+
+  const toggleCsvSelect = (idx: number) => {
+    const next = new Set(selectedCsvResults);
+    if (next.has(idx)) next.delete(idx);
+    else next.add(idx);
+    setSelectedCsvResults(next);
+  };
+
+  const selectAllCsv = () => {
+    if (selectedCsvResults.size === csvResults.length) {
+      setSelectedCsvResults(new Set());
+    } else {
+      setSelectedCsvResults(new Set(csvResults.map((_, i) => i)));
+    }
+  };
+
+  const importCsvSelected = () => {
+    const leadsToImport = csvResults
+      .filter((_, i) => selectedCsvResults.has(i))
+      .map((r) => ({
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email || undefined,
+        jobTitle: r.jobTitle || undefined,
+        company: r.company || undefined,
+        city: r.city || undefined,
+        source: "linkedin" as const,
+        sourceUrl: r.linkedinUrl || undefined,
+        linkedinUrl: r.linkedinUrl || undefined,
+      }));
+    createBulk.mutate({ leads: leadsToImport });
+  };
+
   const toggleSelect = (idx: number) => {
     const next = new Set(selectedResults);
     if (next.has(idx)) next.delete(idx);
@@ -239,6 +381,10 @@ export default function LeadSourcing() {
           <TabsTrigger value="linkedin" className="gap-2">
             <Linkedin className="h-4 w-4" />
             LinkedIn
+          </TabsTrigger>
+          <TabsTrigger value="csv" className="gap-2">
+            <Download className="h-4 w-4" />
+            CSV Import
           </TabsTrigger>
         </TabsList>
 
@@ -672,6 +818,140 @@ export default function LeadSourcing() {
                           <Linkedin className="h-3 w-3" /> LinkedIn
                         </Badge>
                       </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ─── CSV Import Tab ─────────────────────────────────────────────── */}
+        <TabsContent value="csv" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Import from CSV</CardTitle>
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  <Linkedin className="h-3 w-3" /> Sales Navigator Export
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Export your lead list from LinkedIn Sales Navigator as CSV, then drag and drop it here. Pattern-based emails will be auto-generated for each contact.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                  isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
+                }`}
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleFileDrop}
+              >
+                <Download className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <p className="text-sm font-medium">Drag & drop your CSV file here</p>
+                <p className="text-xs text-muted-foreground mt-1">Or click to browse</p>
+                <input
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileSelect}
+                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  style={{ position: 'relative', marginTop: '8px' }}
+                />
+              </div>
+
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs font-medium mb-2">Expected CSV columns (Sales Navigator format):</p>
+                <p className="text-xs text-muted-foreground">First Name, Last Name, Title, Company, Location, LinkedIn URL</p>
+                <p className="text-xs text-muted-foreground mt-1">The system will auto-detect column headers and map them accordingly.</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* CSV Import Results */}
+          {csvResults.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    Imported Contacts ({csvResults.length})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={selectAllCsv}>
+                      {selectedCsvResults.size === csvResults.length ? "Deselect All" : "Select All"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selectedCsvResults.size === 0 || createBulk.isPending}
+                      onClick={importCsvSelected}
+                      className="gap-2"
+                    >
+                      {createBulk.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                      Import {selectedCsvResults.size} to Database
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {csvResults.map((result, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleCsvSelect(idx)}
+                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedCsvResults.has(idx)
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        selectedCsvResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                      }`}>
+                        {selectedCsvResults.has(idx) && (
+                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
+                          {result.jobTitle && <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />{result.company}
+                          </span>
+                          {result.city && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />{result.city}
+                            </span>
+                          )}
+                        </div>
+                        {result.email && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-foreground">{result.email}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                          </div>
+                        )}
+                      </div>
+                      {result.linkedinUrl && (
+                        <a
+                          href={result.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-blue-600 hover:underline shrink-0"
+                        >
+                          View Profile
+                        </a>
+                      )}
                     </div>
                   ))}
                 </div>
