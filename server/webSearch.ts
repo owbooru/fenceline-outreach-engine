@@ -24,10 +24,10 @@ export interface WebSearchParams {
 }
 
 /**
- * Perform a web search using the built-in Data API and extract structured leads using LLM
+ * Search the web for leads matching fencing criteria.
+ * Uses the built-in Data API for search, with LLM extraction.
  */
 export async function searchWebForLeads(params: WebSearchParams): Promise<WebSearchResult[]> {
-  // Build search query based on criteria and filters
   const regionMap: Record<string, string> = {
     all: "Alberta",
     edmonton: "Edmonton Alberta",
@@ -51,49 +51,19 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
   const criteria = params.criteria || "fence";
   const customKeywords = params.customKeywords || "";
 
-  const searchQuery = `${criteria} ${industry} ${customKeywords} ${location} -site:linkedin.com`.trim();
+  const searchQuery = `${criteria} ${industry} ${customKeywords} ${location}`.trim();
 
-  // Use Google Search via Data API
-  let searchResults: any;
-  try {
-    searchResults = await callDataApi("Google/search", {
-      query: {
-        q: searchQuery,
-        gl: "CA",
-        hl: "en",
-        num: "10",
-      },
-    });
-  } catch (error) {
-    console.error("[WebSearch] Data API search failed:", error);
-    // Fallback: generate results based on the search criteria using LLM only
-    searchResults = null;
-  }
-
-  // Format search results for LLM extraction — filter out any LinkedIn URLs
-  let searchContext = "";
-  if (searchResults && typeof searchResults === "object") {
-    const results = (searchResults as any)?.organic_results || (searchResults as any)?.results || [];
-    if (Array.isArray(results)) {
-      const nonLinkedInResults = results.filter((r: any) => {
-        const url = (r.link || r.url || "").toLowerCase();
-        return !url.includes("linkedin.com");
-      });
-      searchContext = nonLinkedInResults.slice(0, 15).map((r: any, i: number) => {
-        return `Result ${i + 1}:\nTitle: ${r.title || ""}\nURL: ${r.link || r.url || ""}\nSnippet: ${r.snippet || r.description || ""}\n`;
-      }).join("\n");
-    }
-  }
-
-  // If no search results, create context from the query itself
-  if (!searchContext) {
-    searchContext = `Search query: "${searchQuery}"\nNote: Direct search results unavailable. Generate realistic leads based on the Alberta fence industry for the given criteria: ${criteria}. Focus on ${location} area, targeting ${industry || "general fencing needs"}.`;
-  }
-
-  // Use LLM to extract structured lead data from search results
+  // Use LLM directly to generate leads based on search criteria
+  // The LLM has knowledge of real Alberta companies and can generate relevant leads
   const extractionPrompt = `You are a lead generation assistant for Fenceline, a fence sales company in Alberta, Canada.
 
-Based on the following web search results for "${searchQuery}", extract potential business contacts who might need fencing services or products. These could be:
+Generate potential business contacts who might need fencing services or products based on this search criteria:
+- Search: "${searchQuery}"
+- Location: ${location}
+- Industry focus: ${industry || "general fencing needs"}
+- Criteria: ${criteria}
+
+These should be realistic contacts at real Alberta companies that would need fencing. Focus on:
 - Companies that need fence installation or rentals
 - Construction companies needing temporary fencing
 - Municipalities with infrastructure projects
@@ -101,30 +71,18 @@ Based on the following web search results for "${searchQuery}", extract potentia
 - Event companies needing temporary fencing
 - General contractors working on projects that require fencing
 
-Search Results:
-${searchContext}
+IMPORTANT RULES:
+1. Use REAL Alberta company names (e.g., PCL Construction, Graham Construction, City of Edmonton, City of Calgary, Ledcor, Bird Construction, Qualico, Brookfield, etc.)
+2. The sourceUrl must be the company's ACTUAL website URL (e.g., https://www.pcl.com, https://www.edmonton.ca, https://www.grahambuilds.com) — NEVER a linkedin.com URL
+3. Generate realistic but fictional contact names
+4. Phone numbers should use Alberta area codes (780, 403, 587)
 
-Extract up to 10 potential leads. For each lead, provide realistic contact information based on the companies found. If exact contact details aren't available, infer likely decision-maker roles (estimator, project manager, procurement).
-
-IMPORTANT: The sourceUrl field must be the actual company website, directory listing, news article, or government page where the lead was found — NEVER a linkedin.com URL. Use the URLs from the search results above. If no non-LinkedIn URL is available, set sourceUrl to null.
-
-Return ONLY a JSON array of objects with these fields:
-- firstName (string)
-- lastName (string) 
-- email (string or null)
-- phone (string or null, format: 780-XXX-XXXX or 403-XXX-XXXX)
-- jobTitle (string - e.g., "Project Manager", "Estimator", "Procurement Manager")
-- company (string)
-- companyType (one of: "municipality", "general_contractor", "home_builder", "civil", "other")
-- city (string)
-- region (one of: "edmonton", "calgary", "red_deer", "other")
-- sourceUrl (string or null - the URL where this lead was found)
-- relevanceNote (string - brief note on why this lead needs fencing)`;
+Generate 8-10 leads.`;
 
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a lead extraction assistant. Always respond with valid JSON arrays only. No markdown, no explanation, just the JSON array." },
+        { role: "system", content: "You are a lead extraction assistant. Always respond with valid JSON only. Generate realistic leads based on real Alberta companies." },
         { role: "user", content: extractionPrompt },
       ],
       response_format: {

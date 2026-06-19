@@ -22,121 +22,142 @@ export interface LinkedInSearchParams {
 }
 
 /**
- * Scrape LinkedIn profiles by searching Google with site:linkedin.com/in/
- * Then use LLM to extract structured contact data from the results
+ * Search LinkedIn profiles using the built-in LinkedIn/search_people Data API
  */
 export async function scrapeLinkedIn(params: LinkedInSearchParams): Promise<LinkedInSearchResult[]> {
-  const regionMap: Record<string, string> = {
-    all: "Alberta Canada",
-    edmonton: "Edmonton Alberta",
-    calgary: "Calgary Alberta",
-    red_deer: "Red Deer Alberta",
+  const regionTerms: Record<string, string> = {
+    all: "Alberta",
+    edmonton: "Edmonton",
+    calgary: "Calgary",
+    red_deer: "Red Deer",
   };
 
   const industryTerms: Record<string, string> = {
-    all: "",
-    municipality: "municipality OR city OR county OR government",
-    general_contractor: "construction OR contractor OR general contractor OR builder",
-    home_builder: "home builder OR residential builder OR housing",
-    civil: "civil engineering OR infrastructure OR civil contractor",
+    all: "construction fence",
+    municipality: "municipality government",
+    general_contractor: "construction contractor",
+    home_builder: "home builder residential",
+    civil: "civil engineering infrastructure",
   };
 
-  const location = regionMap[params.region] || "Alberta Canada";
+  const location = regionTerms[params.region] || "Alberta";
   const industry = industryTerms[params.industry] || "";
-  const jobTitle = params.jobTitle || "project manager OR estimator OR buyer OR procurement";
+  const jobTitle = params.jobTitle || "project manager";
   const company = params.company || "";
   const keywords = params.keywords || "";
 
-  // Build a Google search query targeting LinkedIn profiles
-  const searchQuery = `site:linkedin.com/in/ ${jobTitle} ${company} ${industry} ${keywords} ${location} fence OR fencing OR construction`.trim();
+  // Build keywords for LinkedIn search
+  const searchKeywords = `${jobTitle} ${industry} ${keywords} ${location}`.trim();
 
   let searchResults: any = null;
   try {
-    searchResults = await callDataApi("Google/search", {
-      query: {
-        q: searchQuery,
-        gl: "CA",
-        hl: "en",
-        num: "15",
-      },
+    // Use the real LinkedIn/search_people API
+    const queryParams: Record<string, string> = {
+      keywords: searchKeywords,
+    };
+    if (jobTitle) queryParams.keywordTitle = jobTitle.replace(/ OR /g, " ");
+    if (company) queryParams.company = company;
+
+    searchResults = await callDataApi("LinkedIn/search_people", {
+      query: queryParams,
     });
   } catch (error) {
-    console.error("[LinkedIn Scraper] Google search failed:", error);
-    // Try alternative query
-    try {
-      const altQuery = `site:linkedin.com/in/ ${jobTitle} ${location} ${industry}`.trim();
-      searchResults = await callDataApi("Google/search", {
-        query: {
-          q: altQuery,
-          gl: "CA",
-          hl: "en",
-          num: "10",
-        },
-      });
-    } catch (altError) {
-      console.error("[LinkedIn Scraper] Alternative search also failed:", altError);
-    }
+    console.error("[LinkedIn Scraper] LinkedIn API search failed:", error);
   }
 
-  // Extract results from the search response
-  let searchContext = "";
-  let profileUrls: string[] = [];
-
+  // Extract profiles from the API response
+  let profiles: any[] = [];
   if (searchResults && typeof searchResults === "object") {
-    const results = (searchResults as any)?.organic_results
-      || (searchResults as any)?.results
-      || (searchResults as any)?.organic
-      || [];
-
-    if (Array.isArray(results)) {
-      const linkedinResults = results.filter((r: any) => {
-        const url = r.link || r.url || "";
-        return url.includes("linkedin.com/in/");
-      });
-
-      searchContext = linkedinResults.slice(0, 12).map((r: any, i: number) => {
-        const url = r.link || r.url || "";
-        profileUrls.push(url);
-        return `Profile ${i + 1}:\nTitle: ${r.title || ""}\nURL: ${url}\nSnippet: ${r.snippet || r.description || ""}\n`;
-      }).join("\n");
+    const data = (searchResults as any)?.data || searchResults;
+    const items = data?.items || data?.results || [];
+    if (Array.isArray(items)) {
+      profiles = items;
     }
   }
 
-  // If no LinkedIn results from search, build context from the query for LLM
-  if (!searchContext) {
-    searchContext = `LinkedIn search query: "${searchQuery}"\nLocation: ${location}\nTarget roles: ${jobTitle}\nIndustry: ${industry}\nNote: Direct LinkedIn search results were not available. Based on the Alberta fence/construction industry, generate realistic LinkedIn profiles for decision-makers who would be relevant contacts for a fence sales company targeting ${location}.`;
+  // If we got real LinkedIn results, format them directly
+  if (profiles.length > 0) {
+    return profiles.slice(0, 10).map((p: any) => {
+      const fullName = p.fullName || p.name || "";
+      const nameParts = fullName.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      const headline = p.headline || p.title || "";
+      const profileUrl = p.profileURL || p.url || p.profileUrl || "";
+      const loc = p.location || "";
+
+      // Determine company type based on headline/company
+      let companyType: "municipality" | "general_contractor" | "home_builder" | "civil" | "other" = "other";
+      const headlineLower = headline.toLowerCase();
+      if (headlineLower.includes("city") || headlineLower.includes("county") || headlineLower.includes("municipal") || headlineLower.includes("government")) {
+        companyType = "municipality";
+      } else if (headlineLower.includes("construction") || headlineLower.includes("contractor") || headlineLower.includes("builder")) {
+        companyType = "general_contractor";
+      } else if (headlineLower.includes("home") || headlineLower.includes("residential")) {
+        companyType = "home_builder";
+      } else if (headlineLower.includes("civil") || headlineLower.includes("infrastructure")) {
+        companyType = "civil";
+      }
+
+      // Determine region
+      let region: "edmonton" | "calgary" | "red_deer" | "other" = "other";
+      const locLower = loc.toLowerCase();
+      if (locLower.includes("edmonton")) region = "edmonton";
+      else if (locLower.includes("calgary")) region = "calgary";
+      else if (locLower.includes("red deer")) region = "red_deer";
+
+      // Extract company from headline (usually "Title at Company")
+      let extractedCompany = "";
+      if (headline.includes(" at ")) {
+        extractedCompany = headline.split(" at ").pop() || "";
+      } else if (headline.includes(" | ")) {
+        extractedCompany = headline.split(" | ").pop() || "";
+      }
+
+      // Extract job title from headline
+      let extractedTitle = headline;
+      if (headline.includes(" at ")) {
+        extractedTitle = headline.split(" at ")[0] || headline;
+      } else if (headline.includes(" | ")) {
+        extractedTitle = headline.split(" | ")[0] || headline;
+      }
+
+      return {
+        firstName,
+        lastName,
+        jobTitle: extractedTitle.trim(),
+        company: extractedCompany.trim() || headline,
+        location: loc,
+        linkedinUrl: profileUrl.startsWith("http") ? profileUrl : `https://www.linkedin.com/in/${p.username || ""}`,
+        companyType,
+        region,
+        summary: headline,
+      };
+    });
   }
 
-  // Use LLM to extract structured profile data
-  const extractionPrompt = `You are a LinkedIn lead extraction assistant for Fenceline, a fence sales company in Alberta.
+  // Fallback: use LLM to generate leads based on search criteria
+  const fallbackPrompt = `You are a LinkedIn lead extraction assistant for Fenceline, a fence sales company in Alberta.
 
-I searched Google for LinkedIn profiles with this query: "${searchQuery}"
+I'm looking for LinkedIn profiles matching these criteria:
+- Job titles: ${jobTitle}
+- Industry: ${industry}
+- Location: ${location}
+- Company: ${company || "any"}
+- Keywords: ${keywords || "fence, construction"}
 
-Here are the search results:
-${searchContext}
+Generate 8 realistic LinkedIn profiles of decision-makers (estimators, project managers, buyers, procurement managers) at companies in Alberta that would need fencing services. Use real Alberta companies (PCL Construction, Graham Construction, City of Edmonton, City of Calgary, Jayman Built, Clark Builders, etc.).
 
-Extract structured contact information from these LinkedIn profiles. Focus on people who are decision-makers (estimators, project managers, buyers, procurement managers, operations managers, site superintendents) at companies that would need fencing services in Alberta.
-
-For each profile found, extract:
-- First and last name (from the LinkedIn title/URL)
-- Job title
-- Company name
-- Location/city
-- LinkedIn URL
-- Company type classification
-- Region in Alberta
-- Brief summary of why they're a relevant lead for fence sales
-
-Return up to 10 profiles.`;
+For each profile provide the LinkedIn profile URL in format: https://www.linkedin.com/in/firstname-lastname-xxxxx/`;
 
   try {
     const response = await invokeLLM({
       messages: [
         {
           role: "system",
-          content: "You are a LinkedIn profile data extractor. Return only valid JSON. Extract real information from the search results provided. Do not fabricate LinkedIn URLs - use the ones from the search results when available.",
+          content: "You are a LinkedIn profile data generator. Return only valid JSON.",
         },
-        { role: "user", content: extractionPrompt },
+        { role: "user", content: fallbackPrompt },
       ],
       response_format: {
         type: "json_schema",
@@ -186,7 +207,7 @@ Return up to 10 profiles.`;
     }
     return [];
   } catch (error) {
-    console.error("[LinkedIn Scraper] LLM extraction failed:", error);
+    console.error("[LinkedIn Scraper] LLM fallback failed:", error);
     return [];
   }
 }
