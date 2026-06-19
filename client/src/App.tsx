@@ -5,34 +5,43 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import LeadSourcing from "./pages/LeadSourcing";
+import LeadManagement from "./pages/LeadManagement";
+import Campaigns from "./pages/Campaigns";
+import CampaignDetail from "./pages/CampaignDetail";
+import Engagement from "./pages/Engagement";
+import Salesforce from "./pages/Salesforce";
+import DomainProtection from "./pages/DomainProtection";
+import RolloutTracking from "./pages/RolloutTracking";
+import DashboardLayout from "./components/DashboardLayout";
 
 function Router() {
-  // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
+      <Route path={"/leads/sourcing"} component={LeadSourcing} />
+      <Route path={"/leads/management"} component={LeadManagement} />
+      <Route path={"/campaigns"} component={Campaigns} />
+      <Route path={"/campaigns/:id"} component={CampaignDetail} />
+      <Route path={"/engagement"} component={Engagement} />
+      <Route path={"/salesforce"} component={Salesforce} />
+      <Route path={"/domains"} component={DomainProtection} />
+      <Route path={"/rollout"} component={RolloutTracking} />
       <Route path={"/404"} component={NotFound} />
-      {/* Final fallback route */}
       <Route component={NotFound} />
     </Switch>
   );
 }
 
-// NOTE: About Theme
-// - First choose a default theme according to your design style (dark or light bg), than change color palette in index.css
-//   to keep consistent foreground/background color across components
-// - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
-
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider
-        defaultTheme="light"
-        // switchable
-      >
+      <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <DashboardLayout>
+            <Router />
+          </DashboardLayout>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

@@ -1,11 +1,21 @@
-import { eq } from "drizzle-orm";
+import { eq, desc, asc, and, like, inArray, sql, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import {
+  InsertUser, users,
+  leads, InsertLead, Lead,
+  campaigns, InsertCampaign, Campaign,
+  sequenceSteps, InsertSequenceStep,
+  campaignLeads, InsertCampaignLead,
+  engagementEvents, InsertEngagementEvent,
+  salesforceTasks, InsertSalesforceTask,
+  sendingDomains, InsertSendingDomain,
+  rolloutMilestones, InsertRolloutMilestone,
+  integrationConfigs, InsertIntegrationConfig,
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -18,26 +28,17 @@ export async function getDb() {
   return _db;
 }
 
+// ─── Users ───────────────────────────────────────────────────────────────────
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
-  }
-
+  if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot upsert user: database not available");
-    return;
-  }
+  if (!db) { console.warn("[Database] Cannot upsert user: database not available"); return; }
 
   try {
-    const values: InsertUser = {
-      openId: user.openId,
-    };
+    const values: InsertUser = { openId: user.openId };
     const updateSet: Record<string, unknown> = {};
-
     const textFields = ["name", "email", "loginMethod"] as const;
     type TextField = (typeof textFields)[number];
-
     const assignNullable = (field: TextField) => {
       const value = user[field];
       if (value === undefined) return;
@@ -45,48 +46,260 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values[field] = normalized;
       updateSet[field] = normalized;
     };
-
     textFields.forEach(assignNullable);
-
-    if (user.lastSignedIn !== undefined) {
-      values.lastSignedIn = user.lastSignedIn;
-      updateSet.lastSignedIn = user.lastSignedIn;
-    }
-    if (user.role !== undefined) {
-      values.role = user.role;
-      updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
-    }
-
-    if (!values.lastSignedIn) {
-      values.lastSignedIn = new Date();
-    }
-
-    if (Object.keys(updateSet).length === 0) {
-      updateSet.lastSignedIn = new Date();
-    }
-
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
-      set: updateSet,
-    });
-  } catch (error) {
-    console.error("[Database] Failed to upsert user:", error);
-    throw error;
-  }
+    if (user.lastSignedIn !== undefined) { values.lastSignedIn = user.lastSignedIn; updateSet.lastSignedIn = user.lastSignedIn; }
+    if (user.role !== undefined) { values.role = user.role; updateSet.role = user.role; }
+    else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
+    if (!values.lastSignedIn) values.lastSignedIn = new Date();
+    if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
+    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  } catch (error) { console.error("[Database] Failed to upsert user:", error); throw error; }
 }
 
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
-  if (!db) {
-    console.warn("[Database] Cannot get user: database not available");
-    return undefined;
-  }
-
+  if (!db) return undefined;
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
-
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// ─── Leads ───────────────────────────────────────────────────────────────────
+export async function getLeads(filters?: { segment?: string; status?: string; source?: string; search?: string; companyType?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (filters?.segment) conditions.push(eq(leads.segment, filters.segment as any));
+  if (filters?.status) conditions.push(eq(leads.status, filters.status as any));
+  if (filters?.source) conditions.push(eq(leads.source, filters.source as any));
+  if (filters?.companyType) conditions.push(eq(leads.companyType, filters.companyType as any));
+  if (filters?.search) conditions.push(like(leads.company, `%${filters.search}%`));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return db.select().from(leads).where(where).orderBy(desc(leads.createdAt)).limit(500);
+}
+
+export async function getLeadById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createLead(lead: InsertLead) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(leads).values(lead);
+  return result[0].insertId;
+}
+
+export async function createLeadsBulk(leadsData: InsertLead[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  if (leadsData.length === 0) return;
+  await db.insert(leads).values(leadsData);
+}
+
+export async function updateLead(id: number, data: Partial<InsertLead>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(leads).set(data).where(eq(leads.id, id));
+}
+
+export async function updateLeadsBulk(ids: number[], data: Partial<InsertLead>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(leads).set(data).where(inArray(leads.id, ids));
+}
+
+export async function getLeadStats() {
+  const db = await getDb();
+  if (!db) return { total: 0, bySegment: {}, byStatus: {}, bySource: {} };
+  const all = await db.select().from(leads);
+  const total = all.length;
+  const bySegment: Record<string, number> = {};
+  const byStatus: Record<string, number> = {};
+  const bySource: Record<string, number> = {};
+  all.forEach(l => {
+    bySegment[l.segment || 'unclassified'] = (bySegment[l.segment || 'unclassified'] || 0) + 1;
+    byStatus[l.status] = (byStatus[l.status] || 0) + 1;
+    bySource[l.source || 'unknown'] = (bySource[l.source || 'unknown'] || 0) + 1;
+  });
+  return { total, bySegment, byStatus, bySource };
+}
+
+// ─── Campaigns ───────────────────────────────────────────────────────────────
+export async function getCampaigns(track?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const where = track ? eq(campaigns.track, track as any) : undefined;
+  return db.select().from(campaigns).where(where).orderBy(desc(campaigns.createdAt));
+}
+
+export async function getCampaignById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(campaigns).where(eq(campaigns.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createCampaign(campaign: InsertCampaign) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(campaigns).values(campaign);
+  return result[0].insertId;
+}
+
+export async function updateCampaign(id: number, data: Partial<InsertCampaign>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(campaigns).set(data).where(eq(campaigns.id, id));
+}
+
+// ─── Sequence Steps ──────────────────────────────────────────────────────────
+export async function getSequenceSteps(campaignId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sequenceSteps).where(eq(sequenceSteps.campaignId, campaignId)).orderBy(asc(sequenceSteps.stepOrder));
+}
+
+export async function createSequenceStep(step: InsertSequenceStep) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(sequenceSteps).values(step);
+  return result[0].insertId;
+}
+
+export async function updateSequenceStep(id: number, data: Partial<InsertSequenceStep>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(sequenceSteps).set(data).where(eq(sequenceSteps.id, id));
+}
+
+export async function deleteSequenceStep(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.delete(sequenceSteps).where(eq(sequenceSteps.id, id));
+}
+
+// ─── Campaign Leads ──────────────────────────────────────────────────────────
+export async function enrollLeadsInCampaign(campaignId: number, leadIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const values = leadIds.map(leadId => ({ campaignId, leadId }));
+  await db.insert(campaignLeads).values(values);
+  await db.update(campaigns).set({ totalLeads: sql`totalLeads + ${leadIds.length}` }).where(eq(campaigns.id, campaignId));
+}
+
+export async function getCampaignLeads(campaignId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(campaignLeads).where(eq(campaignLeads.campaignId, campaignId));
+}
+
+// ─── Engagement Events ───────────────────────────────────────────────────────
+export async function createEngagementEvent(event: InsertEngagementEvent) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.insert(engagementEvents).values(event);
+}
+
+export async function getEngagementEvents(filters?: { leadId?: number; campaignId?: number; eventType?: string }) {
+  const db = await getDb();
+  if (!db) return [];
+  const conditions: any[] = [];
+  if (filters?.leadId) conditions.push(eq(engagementEvents.leadId, filters.leadId));
+  if (filters?.campaignId) conditions.push(eq(engagementEvents.campaignId, filters.campaignId));
+  if (filters?.eventType) conditions.push(eq(engagementEvents.eventType, filters.eventType as any));
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
+  return db.select().from(engagementEvents).where(where).orderBy(desc(engagementEvents.occurredAt)).limit(1000);
+}
+
+export async function getEngagementStats(campaignId?: number) {
+  const db = await getDb();
+  if (!db) return { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 };
+  const where = campaignId ? eq(engagementEvents.campaignId, campaignId) : undefined;
+  const events = await db.select().from(engagementEvents).where(where);
+  const stats = { sent: 0, opened: 0, clicked: 0, replied: 0, bounced: 0 };
+  events.forEach(e => {
+    if (e.eventType in stats) stats[e.eventType as keyof typeof stats]++;
+  });
+  return stats;
+}
+
+// ─── Salesforce Tasks ────────────────────────────────────────────────────────
+export async function getSalesforceTasks(status?: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const where = status ? eq(salesforceTasks.status, status as any) : undefined;
+  return db.select().from(salesforceTasks).where(where).orderBy(desc(salesforceTasks.createdAt));
+}
+
+export async function createSalesforceTask(task: InsertSalesforceTask) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(salesforceTasks).values(task);
+  return result[0].insertId;
+}
+
+export async function updateSalesforceTask(id: number, data: Partial<InsertSalesforceTask>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(salesforceTasks).set(data).where(eq(salesforceTasks.id, id));
+}
+
+// ─── Sending Domains ─────────────────────────────────────────────────────────
+export async function getSendingDomains() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(sendingDomains).orderBy(desc(sendingDomains.createdAt));
+}
+
+export async function createSendingDomain(domain: InsertSendingDomain) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(sendingDomains).values(domain);
+  return result[0].insertId;
+}
+
+export async function updateSendingDomain(id: number, data: Partial<InsertSendingDomain>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(sendingDomains).set(data).where(eq(sendingDomains.id, id));
+}
+
+// ─── Rollout Milestones ──────────────────────────────────────────────────────
+export async function getRolloutMilestones() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(rolloutMilestones).orderBy(asc(rolloutMilestones.id));
+}
+
+export async function createRolloutMilestone(milestone: InsertRolloutMilestone) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(rolloutMilestones).values(milestone);
+  return result[0].insertId;
+}
+
+export async function updateRolloutMilestone(id: number, data: Partial<InsertRolloutMilestone>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  await db.update(rolloutMilestones).set(data).where(eq(rolloutMilestones.id, id));
+}
+
+// ─── Integration Configs ─────────────────────────────────────────────────────
+export async function getIntegrationConfigs() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(integrationConfigs);
+}
+
+export async function upsertIntegrationConfig(provider: string, configData: Record<string, unknown>, isActive: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const existing = await db.select().from(integrationConfigs).where(eq(integrationConfigs.provider, provider as any)).limit(1);
+  if (existing.length > 0) {
+    await db.update(integrationConfigs).set({ configData, isActive }).where(eq(integrationConfigs.id, existing[0].id));
+  } else {
+    await db.insert(integrationConfigs).values({ provider: provider as any, configData, isActive });
+  }
+}
