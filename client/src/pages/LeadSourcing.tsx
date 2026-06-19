@@ -650,17 +650,15 @@ export default function LeadSourcing() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {result.linkedinUrl && (
-                          <a
-                            href={result.linkedinUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            View Profile
-                          </a>
-                        )}
+                        <a
+                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          Find on LinkedIn
+                        </a>
                         <Badge variant="outline" className="text-xs shrink-0 gap-1">
                           <Linkedin className="h-3 w-3" /> LinkedIn
                         </Badge>
