@@ -162,11 +162,16 @@ Target contacts at companies that would need site services:
 
 IMPORTANT RULES:
 1. Use REAL Alberta company names (PCL Construction, Graham Construction, City of Edmonton, City of Calgary, City of Red Deer, Ledcor, Bird Construction, Qualico, Jayman Built, Brookfield, ATCO, Stantec, WSP, Chandos Construction, Rohit Group, etc.)
-2. The sourceUrl must be the company's ACTUAL website URL — NEVER a linkedin.com URL
+2. The sourceUrl MUST be a SPECIFIC page on the company's website where the project or service need is evident — NOT the homepage. Use real page paths like:
+   - For municipalities: their procurement/tender page (e.g., https://www.edmonton.ca/programs_services/procurement, https://www.calgary.ca/business/tenders, https://www.reddeer.ca/business/bids-and-tenders/)
+   - For construction companies: their projects page (e.g., https://www.pcl.com/projects, https://www.grahambuilds.com/projects, https://www.ledcor.com/projects)
+   - For home builders: their communities/developments page (e.g., https://www.jaymanbuilt.com/communities, https://www.qualico.com/communities)
+   - For events: the event's website or venue page
+   - NEVER use linkedin.com or a generic homepage like just "https://www.pcl.com"
 3. Generate realistic contact names for decision-makers (Project Managers, Site Superintendents, Estimators, Procurement Managers, Operations Managers)
 4. Phone numbers should use Alberta area codes (780, 403, 587)
 5. For email addresses, use firstname.lastname@companydomain.com with REAL company domains (pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, ledcor.com, birdconstruction.com, qualico.com, jaymanbuilt.com, stantec.com, atco.com)
-6. ALL contacts MUST be located in Alberta, Canada — specifically in or near ${location}
+6. ALL contacts MUST be located in ${location}. Use appropriate cities for that region.
 7. The serviceNeed field should specify which FenceLine service they likely need (e.g., "Temporary fencing for construction site", "Portable toilets for new subdivision", "Waste bins for demolition project", "Full site services for commercial build")
 
 Generate 8-10 leads.`;
@@ -195,13 +200,21 @@ Location: ${location}
 
 IMPORTANT RULES:
 1. Use REAL Alberta organizations that issue tenders: City of Edmonton, City of Calgary, City of Red Deer, Alberta Health Services, Edmonton Public Schools, Calgary Board of Education, Alberta Transportation, EPCOR, ATCO, University of Alberta, University of Calgary, etc.
-2. The sourceUrl should be the organization's procurement/tender page URL (e.g., https://www.edmonton.ca/programs_services/procurement, https://www.calgary.ca/business/tenders)
+2. The sourceUrl MUST be the SPECIFIC procurement/tender page where the opportunity would be posted — NOT the organization's homepage. Use real tender page URLs like:
+   - https://www.edmonton.ca/programs_services/procurement
+   - https://www.calgary.ca/business/tenders
+   - https://www.reddeer.ca/business/bids-and-tenders/
+   - https://www.albertahealthservices.ca/about/page13459.aspx (AHS procurement)
+   - https://vendor.purchasingconnection.ca (Alberta Purchasing Connection)
+   - https://www.merx.com (MERX Canadian public tenders)
+   - https://www.epsb.ca/ourdistrict/businesswithepsb/ (Edmonton Public Schools)
+   - https://www.ualberta.ca/facilities-operations/planning-project-delivery (U of A)
 3. Contact should be the procurement officer, project manager, or facilities manager
-4. Phone numbers: Alberta area codes (780, 403, 587)
+4. Phone numbers: use area codes appropriate for ${location}
 5. Email: firstname.lastname@organization domain
-6. ALL contacts MUST be in Alberta — specifically ${location}
-7. The serviceNeed should describe the likely tender (e.g., "RFP for temporary fencing - new school construction", "Tender for portable sanitation - road construction project", "Bid for site services - hospital expansion")
-8. The relevanceNote should mention the type of project and why they'd need FenceLine's services
+6. ALL contacts MUST be in ${location}
+7. The serviceNeed should describe the specific tender opportunity (e.g., "RFP for temporary fencing - new school construction", "Tender for portable sanitation - road construction project", "Bid for site services - hospital expansion")
+8. The relevanceNote should mention the specific project and why they'd need FenceLine's services
 
 Generate 8-10 leads focused on active or upcoming tender opportunities.`;
 }
