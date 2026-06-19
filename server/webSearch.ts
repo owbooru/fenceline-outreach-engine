@@ -76,6 +76,7 @@ IMPORTANT RULES:
 2. The sourceUrl must be the company's ACTUAL website URL (e.g., https://www.pcl.com, https://www.edmonton.ca, https://www.grahambuilds.com) — NEVER a linkedin.com URL
 3. Generate realistic but fictional contact names
 4. Phone numbers should use Alberta area codes (780, 403, 587)
+5. For email addresses, generate a pattern-based email using the format firstname.lastname@companydomain.com (use the company's real domain, e.g., pcl.com, edmonton.ca, grahambuilds.com, ledcor.com, birdconstruction.com). ALWAYS provide an email — never null.
 
 Generate 8-10 leads.`;
 

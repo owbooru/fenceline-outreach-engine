@@ -8,6 +8,7 @@ export interface LinkedInSearchResult {
   company: string;
   location: string;
   linkedinUrl: string;
+  email: string;
   companyType: "municipality" | "general_contractor" | "home_builder" | "civil" | "other";
   region: "edmonton" | "calgary" | "red_deer" | "other";
   summary: string;
@@ -122,6 +123,12 @@ export async function scrapeLinkedIn(params: LinkedInSearchParams): Promise<Link
         extractedTitle = headline.split(" | ")[0] || headline;
       }
 
+      // Generate pattern-based email from name + company
+      const companyDomain = (extractedCompany || headline).toLowerCase()
+        .replace(/[^a-z0-9]/g, "")
+        .slice(0, 20) + ".com";
+      const patternEmail = `${firstName.toLowerCase()}.${lastName.toLowerCase().split(" ")[0]}@${companyDomain}`;
+
       return {
         firstName,
         lastName,
@@ -129,6 +136,7 @@ export async function scrapeLinkedIn(params: LinkedInSearchParams): Promise<Link
         company: extractedCompany.trim() || headline,
         location: loc,
         linkedinUrl: profileUrl.startsWith("http") ? profileUrl : `https://www.linkedin.com/in/${p.username || ""}`,
+        email: patternEmail,
         companyType,
         region,
         summary: headline,
@@ -148,7 +156,9 @@ I'm looking for LinkedIn profiles matching these criteria:
 
 Generate 8 realistic LinkedIn profiles of decision-makers (estimators, project managers, buyers, procurement managers) at companies in Alberta that would need fencing services. Use real Alberta companies (PCL Construction, Graham Construction, City of Edmonton, City of Calgary, Jayman Built, Clark Builders, etc.).
 
-For each profile provide the LinkedIn profile URL in format: https://www.linkedin.com/in/firstname-lastname-xxxxx/`;
+For each profile provide:
+- The LinkedIn profile URL in format: https://www.linkedin.com/in/firstname-lastname-xxxxx/
+- A pattern-based email using firstname.lastname@companydomain.com (use real company domains like pcl.com, edmonton.ca, grahambuilds.com, jaymanbuilt.com, clarkbuilders.com)`;
 
   try {
     const response = await invokeLLM({
@@ -178,6 +188,7 @@ For each profile provide the LinkedIn profile URL in format: https://www.linkedi
                     company: { type: "string" },
                     location: { type: "string" },
                     linkedinUrl: { type: "string" },
+                    email: { type: "string" },
                     companyType: {
                       type: "string",
                       enum: ["municipality", "general_contractor", "home_builder", "civil", "other"],
@@ -188,7 +199,7 @@ For each profile provide the LinkedIn profile URL in format: https://www.linkedi
                     },
                     summary: { type: "string" },
                   },
-                  required: ["firstName", "lastName", "jobTitle", "company", "location", "linkedinUrl", "companyType", "region", "summary"],
+                  required: ["firstName", "lastName", "jobTitle", "company", "location", "linkedinUrl", "email", "companyType", "region", "summary"],
                   additionalProperties: false,
                 },
               },

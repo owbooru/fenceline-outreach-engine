@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Search, Download, Building2, MapPin, Briefcase, Linkedin, BookOpen, Globe, Loader2, Sparkles, Info } from "lucide-react";
+import { Search, Download, Building2, MapPin, Briefcase, Linkedin, BookOpen, Globe, Loader2, Sparkles, Info, Mail } from "lucide-react";
 
 export default function LeadSourcing() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,6 +136,7 @@ export default function LeadSourcing() {
       .map((r) => ({
         firstName: r.firstName,
         lastName: r.lastName,
+        email: r.email || undefined,
         jobTitle: r.jobTitle || undefined,
         company: r.company,
         companyType: r.companyType,
@@ -401,6 +402,13 @@ export default function LeadSourcing() {
                             </span>
                           )}
                         </div>
+                        {result.email && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-foreground">{result.email}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                          </div>
+                        )}
                         {result.relevanceNote && (
                           <p className="text-xs text-muted-foreground/80 mt-1 italic">
                             {result.relevanceNote}
@@ -630,6 +638,13 @@ export default function LeadSourcing() {
                             <MapPin className="h-3 w-3" />{result.location}
                           </span>
                         </div>
+                        {result.email && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-xs text-foreground">{result.email}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                          </div>
+                        )}
                         {result.summary && (
                           <p className="text-xs text-muted-foreground/80 mt-1 italic">{result.summary}</p>
                         )}
