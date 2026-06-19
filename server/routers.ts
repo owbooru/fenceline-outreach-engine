@@ -1,7 +1,7 @@
 import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
-import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
+import { publicProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { searchWebForLeads } from "./webSearch";
@@ -20,7 +20,7 @@ export const appRouter = router({
 
   // ─── Leads ─────────────────────────────────────────────────────────────────
   leads: router({
-    list: protectedProcedure
+    list: publicProcedure
       .input(z.object({
         segment: z.string().optional(),
         status: z.string().optional(),
@@ -30,11 +30,11 @@ export const appRouter = router({
       }).optional())
       .query(({ input }) => db.getLeads(input)),
 
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(({ input }) => db.getLeadById(input.id)),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         firstName: z.string(),
         lastName: z.string(),
@@ -58,7 +58,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    createBulk: protectedProcedure
+    createBulk: publicProcedure
       .input(z.object({
         leads: z.array(z.object({
           firstName: z.string(),
@@ -83,7 +83,7 @@ export const appRouter = router({
         return { count: input.leads.length };
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -107,7 +107,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    bulkUpdate: protectedProcedure
+    bulkUpdate: publicProcedure
       .input(z.object({
         ids: z.array(z.number()),
         data: z.object({
@@ -121,16 +121,16 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    stats: protectedProcedure.query(() => db.getLeadStats()),
+    stats: publicProcedure.query(() => db.getLeadStats()),
   }),
 
   // ─── Campaigns ─────────────────────────────────────────────────────────────
   campaigns: router({
-    list: protectedProcedure
+    list: publicProcedure
       .input(z.object({ track: z.string().optional() }).optional())
       .query(({ input }) => db.getCampaigns(input?.track)),
 
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const campaign = await db.getCampaignById(input.id);
@@ -138,7 +138,7 @@ export const appRouter = router({
         return { campaign, steps };
       }),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         name: z.string(),
         track: z.enum(["existing_customers", "new_local", "new_national"]),
@@ -152,7 +152,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -173,7 +173,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    enrollLeads: protectedProcedure
+    enrollLeads: publicProcedure
       .input(z.object({
         campaignId: z.number(),
         leadIds: z.array(z.number()),
@@ -183,18 +183,18 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    getLeads: protectedProcedure
+    getLeads: publicProcedure
       .input(z.object({ campaignId: z.number() }))
       .query(({ input }) => db.getCampaignLeads(input.campaignId)),
   }),
 
   // ─── Sequence Steps ────────────────────────────────────────────────────────
   sequences: router({
-    list: protectedProcedure
+    list: publicProcedure
       .input(z.object({ campaignId: z.number() }))
       .query(({ input }) => db.getSequenceSteps(input.campaignId)),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         campaignId: z.number(),
         stepOrder: z.number(),
@@ -208,7 +208,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -224,7 +224,7 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    delete: protectedProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         await db.deleteSequenceStep(input.id);
@@ -234,7 +234,7 @@ export const appRouter = router({
 
   // ─── Engagement ────────────────────────────────────────────────────────────
   engagement: router({
-    events: protectedProcedure
+    events: publicProcedure
       .input(z.object({
         leadId: z.number().optional(),
         campaignId: z.number().optional(),
@@ -242,11 +242,11 @@ export const appRouter = router({
       }).optional())
       .query(({ input }) => db.getEngagementEvents(input)),
 
-    stats: protectedProcedure
+    stats: publicProcedure
       .input(z.object({ campaignId: z.number().optional() }).optional())
       .query(({ input }) => db.getEngagementStats(input?.campaignId)),
 
-    record: protectedProcedure
+    record: publicProcedure
       .input(z.object({
         leadId: z.number(),
         campaignId: z.number().optional(),
@@ -262,11 +262,11 @@ export const appRouter = router({
 
   // ─── Salesforce ────────────────────────────────────────────────────────────
   salesforce: router({
-    tasks: protectedProcedure
+    tasks: publicProcedure
       .input(z.object({ status: z.string().optional() }).optional())
       .query(({ input }) => db.getSalesforceTasks(input?.status)),
 
-    createTask: protectedProcedure
+    createTask: publicProcedure
       .input(z.object({
         leadId: z.number(),
         taskType: z.enum(["call", "follow_up", "meeting"]).optional(),
@@ -279,7 +279,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    updateTask: protectedProcedure
+    updateTask: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -296,9 +296,9 @@ export const appRouter = router({
 
   // ─── Sending Domains ───────────────────────────────────────────────────────
   domains: router({
-    list: protectedProcedure.query(() => db.getSendingDomains()),
+    list: publicProcedure.query(() => db.getSendingDomains()),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         domain: z.string(),
         notes: z.string().optional(),
@@ -308,7 +308,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -329,9 +329,9 @@ export const appRouter = router({
 
   // ─── Rollout Milestones ────────────────────────────────────────────────────
   rollout: router({
-    milestones: protectedProcedure.query(() => db.getRolloutMilestones()),
+    milestones: publicProcedure.query(() => db.getRolloutMilestones()),
 
-    create: protectedProcedure
+    create: publicProcedure
       .input(z.object({
         phase: z.enum(["poc", "staged_beta", "full_alberta_rollout"]),
         title: z.string(),
@@ -345,7 +345,7 @@ export const appRouter = router({
         return { id };
       }),
 
-    update: protectedProcedure
+    update: publicProcedure
       .input(z.object({
         id: z.number(),
         data: z.object({
@@ -369,9 +369,9 @@ export const appRouter = router({
 
   // ─── Integration Configs ───────────────────────────────────────────────────
   integrations: router({
-    list: protectedProcedure.query(() => db.getIntegrationConfigs()),
+    list: publicProcedure.query(() => db.getIntegrationConfigs()),
 
-    upsert: protectedProcedure
+    upsert: publicProcedure
       .input(z.object({
         provider: z.enum(["salesforce", "scotts_directories", "linkedin", "email_provider"]),
         configData: z.record(z.string(), z.unknown()),
@@ -385,7 +385,7 @@ export const appRouter = router({
 
   // ─── Web Search ─────────────────────────────────────────────────────────────
   webSearch: router({
-    search: protectedProcedure
+    search: publicProcedure
       .input(z.object({
         criteria: z.string(),
         region: z.string(),
@@ -400,7 +400,7 @@ export const appRouter = router({
 
   // ─── LinkedIn Scraper ──────────────────────────────────────────────────────────
   linkedin: router({
-    scrape: protectedProcedure
+    scrape: publicProcedure
       .input(z.object({
         jobTitle: z.string(),
         company: z.string(),

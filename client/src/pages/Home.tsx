@@ -1,4 +1,3 @@
-import { useAuth } from "@/_core/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { trpc } from "@/lib/trpc";
 import { useLocation } from "wouter";
@@ -25,7 +24,7 @@ const quickActions = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
+
   const [, setLocation] = useLocation();
   const { data: stats } = trpc.leads.stats.useQuery();
   const { data: engagementStats } = trpc.engagement.stats.useQuery({});
@@ -43,7 +42,7 @@ export default function Home() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">
-          Welcome back{user?.name ? `, ${user.name.split(" ")[0]}` : ""}
+          Welcome back
         </h1>
         <p className="text-muted-foreground mt-1">
           Your fence sales outreach and growth engine overview.
