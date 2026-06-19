@@ -87,8 +87,8 @@
 - [x] Support job title, company, and region filters for LinkedIn search
 
 ## Expanded Service Lines & Tender Search
-- [ ] Update search criteria to include all Fenceline services (temp fencing, portable toilets, waste bins, walkways, handwash stations, full site services)
-- [ ] Add tender/bid search feature for active Alberta construction projects needing site services
-- [ ] Remove LinkedIn profile links from results (keep LinkedIn tab as search tool)
-- [ ] Focus results on email + company website as source
-- [ ] Add company website verification step
+- [x] Update search criteria to include all Fenceline services (temp fencing, portable toilets, waste bins, walkways, handwash stations, full site services)
+- [x] Add tender/bid search feature for active Alberta construction projects needing site services
+- [x] Keep LinkedIn tab as search tool, added "Find Role" and "Search Name" options
+- [x] Focus results on email + specific source page URL (projects page, tender page, procurement page)
+- [x] Source links now point to specific pages where service need was found (not homepages)

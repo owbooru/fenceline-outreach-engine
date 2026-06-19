@@ -574,21 +574,25 @@ export default function LeadSourcing() {
                           </p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
-                        {result.sourceUrl && (
-                          <a
-                            href={result.sourceUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                            className="text-xs text-blue-600 hover:underline"
-                          >
-                            View Source
-                          </a>
-                        )}
-                        <Badge variant="outline" className="text-xs shrink-0 gap-1">
-                          <Globe className="h-3 w-3" /> Web
-                        </Badge>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " " + (result.serviceNeed || result.relevanceNote || "projects") + " " + (result.city || ""))}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          Find Project
+                        </a>
+                        <a
+                          href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " site services procurement")}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-muted-foreground hover:text-blue-600 hover:underline"
+                        >
+                          Company
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -1040,18 +1044,16 @@ export default function LeadSourcing() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    {result.sourceUrl && (
-                      <a
-                        href={result.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-xs text-blue-600 hover:underline"
-                      >
-                        View Source
-                      </a>
-                    )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " " + result.city + " construction projects")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Find Company
+                    </a>
                     <Badge variant="outline" className="text-xs shrink-0">
                       {result.source === "scotts_directories" ? "Scott's" : "LinkedIn"}
                     </Badge>
