@@ -158,6 +158,7 @@ export default function LeadManagement() {
                 <SelectItem value="linkedin">LinkedIn</SelectItem>
                 <SelectItem value="manual">Manual</SelectItem>
                 <SelectItem value="import">Import</SelectItem>
+                <SelectItem value="web_search">Web Search</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -263,7 +264,7 @@ export default function LeadManagement() {
                         </Badge>
                       </td>
                       <td className="p-3 text-muted-foreground text-xs">
-                        {lead.source === "scotts_directories" ? "Scott's" : lead.source}
+                        {lead.source === "scotts_directories" ? "Scott's" : lead.source === "web_search" ? "Web Search" : lead.source}
                       </td>
                       <td className="p-3 text-muted-foreground text-xs capitalize">
                         {lead.region?.replace("_", " ") || "—"}

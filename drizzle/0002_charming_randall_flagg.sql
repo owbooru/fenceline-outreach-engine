@@ -1,0 +1,1 @@
+ALTER TABLE `leads` MODIFY COLUMN `source` enum('scotts_directories','linkedin','manual','import','web_search') DEFAULT 'manual';

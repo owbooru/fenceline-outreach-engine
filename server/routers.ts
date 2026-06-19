@@ -4,6 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
+import { searchWebForLeads } from "./webSearch";
 
 export const appRouter = router({
   system: systemRouter,
@@ -44,7 +45,7 @@ export const appRouter = router({
         city: z.string().optional(),
         province: z.string().optional(),
         region: z.enum(["edmonton", "calgary", "red_deer", "other"]).optional(),
-        source: z.enum(["scotts_directories", "linkedin", "manual", "import"]).optional(),
+        source: z.enum(["scotts_directories", "linkedin", "manual", "import", "web_search"]).optional(),
         sourceUrl: z.string().optional(),
         segment: z.enum(["existing_customer", "new_local", "new_national"]).optional(),
         linkedinUrl: z.string().optional(),
@@ -69,7 +70,7 @@ export const appRouter = router({
           city: z.string().optional(),
           province: z.string().optional(),
           region: z.enum(["edmonton", "calgary", "red_deer", "other"]).optional(),
-          source: z.enum(["scotts_directories", "linkedin", "manual", "import"]).optional(),
+          source: z.enum(["scotts_directories", "linkedin", "manual", "import", "web_search"]).optional(),
           sourceUrl: z.string().optional(),
           segment: z.enum(["existing_customer", "new_local", "new_national"]).optional(),
           linkedinUrl: z.string().optional(),
@@ -378,6 +379,21 @@ export const appRouter = router({
       .mutation(async ({ input }) => {
         await db.upsertIntegrationConfig(input.provider, input.configData, input.isActive);
         return { success: true };
+      }),
+  }),
+
+  // ─── Web Search ─────────────────────────────────────────────────────────────
+  webSearch: router({
+    search: protectedProcedure
+      .input(z.object({
+        criteria: z.string(),
+        region: z.string(),
+        industry: z.string(),
+        customKeywords: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const results = await searchWebForLeads(input);
+        return { results };
       }),
   }),
 });

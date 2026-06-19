@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Search, Download, Building2, MapPin, Briefcase, Linkedin, BookOpen, Plus, Loader2 } from "lucide-react";
+import { Search, Download, Building2, MapPin, Briefcase, Linkedin, BookOpen, Globe, Loader2, Sparkles, Info } from "lucide-react";
 
 export default function LeadSourcing() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -17,23 +17,61 @@ export default function LeadSourcing() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
 
+  // Web search state
+  const [webCriteria, setWebCriteria] = useState("people needing fencing");
+  const [webRegion, setWebRegion] = useState("all");
+  const [webIndustry, setWebIndustry] = useState("all");
+  const [webKeywords, setWebKeywords] = useState("");
+  const [webResults, setWebResults] = useState<any[]>([]);
+  const [selectedWebResults, setSelectedWebResults] = useState<Set<number>>(new Set());
+  const [isWebSearching, setIsWebSearching] = useState(false);
+
   const createBulk = trpc.leads.createBulk.useMutation({
     onSuccess: (data) => {
       toast.success(`${data.count} leads imported successfully`);
       setSelectedResults(new Set());
+      setSelectedWebResults(new Set());
       setSearchResults([]);
+      setWebResults([]);
     },
     onError: () => toast.error("Failed to import leads"),
   });
 
+  const webSearchMutation = trpc.webSearch.search.useMutation({
+    onSuccess: (data) => {
+      setWebResults(data.results);
+      setIsWebSearching(false);
+      if (data.results.length === 0) {
+        toast.info("No results found. Try different criteria.");
+      } else {
+        toast.success(`Found ${data.results.length} potential leads`);
+      }
+    },
+    onError: (err) => {
+      setIsWebSearching(false);
+      toast.error("Web search failed. Please try again.");
+    },
+  });
+
   const handleSearch = () => {
     setIsSearching(true);
-    // Simulate search results from Scott's Directories / LinkedIn
     setTimeout(() => {
       const mockResults = generateMockResults(searchQuery, region, companyType);
       setSearchResults(mockResults);
       setIsSearching(false);
     }, 1200);
+  };
+
+  const handleWebSearch = () => {
+    setIsWebSearching(true);
+    setWebResults([]);
+    setSelectedWebResults(new Set());
+    webSearchMutation.mutate({
+      criteria: webCriteria,
+      region: webRegion,
+      industry: webIndustry,
+      customKeywords: webKeywords,
+    });
   };
 
   const toggleSelect = (idx: number) => {
@@ -43,11 +81,26 @@ export default function LeadSourcing() {
     setSelectedResults(next);
   };
 
+  const toggleWebSelect = (idx: number) => {
+    const next = new Set(selectedWebResults);
+    if (next.has(idx)) next.delete(idx);
+    else next.add(idx);
+    setSelectedWebResults(next);
+  };
+
   const selectAll = () => {
     if (selectedResults.size === searchResults.length) {
       setSelectedResults(new Set());
     } else {
       setSelectedResults(new Set(searchResults.map((_, i) => i)));
+    }
+  };
+
+  const selectAllWeb = () => {
+    if (selectedWebResults.size === webResults.length) {
+      setSelectedWebResults(new Set());
+    } else {
+      setSelectedWebResults(new Set(webResults.map((_, i) => i)));
     }
   };
 
@@ -70,17 +123,40 @@ export default function LeadSourcing() {
     createBulk.mutate({ leads: leadsToImport });
   };
 
+  const importWebSelected = () => {
+    const leadsToImport = webResults
+      .filter((_, i) => selectedWebResults.has(i))
+      .map((r) => ({
+        firstName: r.firstName,
+        lastName: r.lastName,
+        email: r.email || undefined,
+        phone: r.phone || undefined,
+        jobTitle: r.jobTitle || undefined,
+        company: r.company,
+        companyType: r.companyType,
+        city: r.city || undefined,
+        region: r.region,
+        source: "web_search" as const,
+        sourceUrl: r.sourceUrl || undefined,
+      }));
+    createBulk.mutate({ leads: leadsToImport });
+  };
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Lead Sourcing</h1>
         <p className="text-muted-foreground mt-1">
-          Search and import contacts from Scott's Directories and LinkedIn.
+          Search and import contacts from Scott's Directories, LinkedIn, and the web.
         </p>
       </div>
 
-      <Tabs defaultValue="scotts" className="space-y-4">
+      <Tabs defaultValue="web" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="web" className="gap-2">
+            <Globe className="h-4 w-4" />
+            Web Search
+          </TabsTrigger>
           <TabsTrigger value="scotts" className="gap-2">
             <BookOpen className="h-4 w-4" />
             Scott's Directories
@@ -91,6 +167,184 @@ export default function LeadSourcing() {
           </TabsTrigger>
         </TabsList>
 
+        {/* ─── Web Search Tab ─────────────────────────────────────────────── */}
+        <TabsContent value="web" className="space-y-4">
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Search the Internet</CardTitle>
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  <Sparkles className="h-3 w-3" /> AI-Powered
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Search the web for companies and people who need fencing services. AI extracts structured contact information from results.
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search Criteria */}
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Search Criteria</label>
+                  <Select value={webCriteria} onValueChange={setWebCriteria}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="people needing fencing">People Needing Fencing</SelectItem>
+                      <SelectItem value="temporary fence rentals">Temporary Fence Rentals</SelectItem>
+                      <SelectItem value="construction site fencing needed">Construction Site Fencing</SelectItem>
+                      <SelectItem value="municipal fencing projects">Municipal Fencing Projects</SelectItem>
+                      <SelectItem value="residential fence installation">Residential Fence Installation</SelectItem>
+                      <SelectItem value="commercial property fencing">Commercial Property Fencing</SelectItem>
+                      <SelectItem value="event temporary fencing">Event Temporary Fencing</SelectItem>
+                      <SelectItem value="industrial perimeter fencing">Industrial Perimeter Fencing</SelectItem>
+                      <SelectItem value="new construction projects needing fencing">New Construction Projects</SelectItem>
+                      <SelectItem value="property developers needing fencing">Property Developers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Region</label>
+                    <Select value={webRegion} onValueChange={setWebRegion}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Alberta</SelectItem>
+                        <SelectItem value="edmonton">Edmonton</SelectItem>
+                        <SelectItem value="calgary">Calgary</SelectItem>
+                        <SelectItem value="red_deer">Red Deer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Industry Focus</label>
+                    <Select value={webIndustry} onValueChange={setWebIndustry}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Industries</SelectItem>
+                        <SelectItem value="fence_installation">Fence Installation</SelectItem>
+                        <SelectItem value="temp_fence_rental">Temp Fence Rental</SelectItem>
+                        <SelectItem value="construction_fencing">Construction Fencing</SelectItem>
+                        <SelectItem value="municipal_projects">Municipal Projects</SelectItem>
+                        <SelectItem value="residential_fencing">Residential Fencing</SelectItem>
+                        <SelectItem value="commercial_fencing">Commercial Fencing</SelectItem>
+                        <SelectItem value="event_fencing">Event Fencing</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium">Custom Keywords</label>
+                    <Input
+                      value={webKeywords}
+                      onChange={(e) => setWebKeywords(e.target.value)}
+                      placeholder="e.g., chain link, privacy fence..."
+                      onKeyDown={(e) => e.key === "Enter" && handleWebSearch()}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Button onClick={handleWebSearch} disabled={isWebSearching} className="gap-2">
+                  {isWebSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                  {isWebSearching ? "Searching..." : "Search the Web"}
+                </Button>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Info className="h-3 w-3" />
+                  AI will extract contact details from web results
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Web Search Results */}
+          {webResults.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    Web Results ({webResults.length})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={selectAllWeb}>
+                      {selectedWebResults.size === webResults.length ? "Deselect All" : "Select All"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selectedWebResults.size === 0 || createBulk.isPending}
+                      onClick={importWebSelected}
+                      className="gap-2"
+                    >
+                      {createBulk.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                      Import {selectedWebResults.size} Selected
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {webResults.map((result, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleWebSelect(idx)}
+                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedWebResults.has(idx)
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        selectedWebResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                      }`}>
+                        {selectedWebResults.has(idx) && (
+                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
+                          {result.jobTitle && <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />{result.company}
+                          </span>
+                          {result.city && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />{result.city}
+                            </span>
+                          )}
+                        </div>
+                        {result.relevanceNote && (
+                          <p className="text-xs text-muted-foreground/80 mt-1 italic">
+                            {result.relevanceNote}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-xs shrink-0 gap-1">
+                        <Globe className="h-3 w-3" /> Web
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* ─── Scott's Directories Tab ────────────────────────────────────── */}
         <TabsContent value="scotts" className="space-y-4">
           <Card>
             <CardHeader className="pb-4">
@@ -138,6 +392,7 @@ export default function LeadSourcing() {
           </Card>
         </TabsContent>
 
+        {/* ─── LinkedIn Tab ───────────────────────────────────────────────── */}
         <TabsContent value="linkedin" className="space-y-4">
           <Card>
             <CardHeader className="pb-4">
@@ -186,7 +441,7 @@ export default function LeadSourcing() {
         </TabsContent>
       </Tabs>
 
-      {/* Search Results */}
+      {/* Scott's / LinkedIn Search Results */}
       {searchResults.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
@@ -265,7 +520,7 @@ export default function LeadSourcing() {
   );
 }
 
-// Mock data generator for demonstration
+// Mock data generator for Scott's / LinkedIn demonstration
 function generateMockResults(query: string, region: string, companyType: string) {
   const companies: Record<string, any[]> = {
     municipality: [

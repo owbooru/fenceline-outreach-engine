@@ -71,3 +71,11 @@
 - [x] Phase transition controls (Start / Complete buttons)
 - [x] Milestone creation with phase, title, description, target date
 - [x] Per-milestone engagement stats display (leads processed, emails sent, open rate, warm leads)
+
+## Web Scraping - Internet Lead Sourcing
+- [x] Add "Web Search" tab to Lead Sourcing page
+- [x] Customizable search criteria filters (people needing fencing, fence rentals, construction fencing, temporary fencing, etc.)
+- [x] Backend API endpoint using LLM to parse web search results into structured contacts
+- [x] Region and industry filters for web scraping
+- [x] Import scraped contacts into lead database with source tracking
+- [x] Predefined search templates (fence installation, temp fence rentals, construction projects, municipal projects)

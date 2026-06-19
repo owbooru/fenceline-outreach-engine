@@ -29,7 +29,7 @@ export const leads = mysqlTable("leads", {
   city: varchar("city", { length: 128 }),
   province: varchar("province", { length: 64 }).default("Alberta"),
   region: mysqlEnum("region", ["edmonton", "calgary", "red_deer", "other"]).default("other"),
-  source: mysqlEnum("source", ["scotts_directories", "linkedin", "manual", "import"]).default("manual"),
+  source: mysqlEnum("source", ["scotts_directories", "linkedin", "manual", "import", "web_search"]).default("manual"),
   sourceUrl: text("sourceUrl"),
   segment: mysqlEnum("segment", ["existing_customer", "new_local", "new_national"]),
   status: mysqlEnum("status", ["new", "verified", "contacted", "qualified", "warm", "hot", "converted", "archived"]).default("new").notNull(),
