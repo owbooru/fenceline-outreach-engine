@@ -77,6 +77,8 @@ IMPORTANT RULES:
 3. Generate realistic but fictional contact names
 4. Phone numbers should use Alberta area codes (780, 403, 587)
 5. For email addresses, generate a pattern-based email using the format firstname.lastname@companydomain.com (use the company's real domain, e.g., pcl.com, edmonton.ca, grahambuilds.com, ledcor.com, birdconstruction.com). ALWAYS provide an email — never null.
+6. ALL contacts MUST be located in Alberta, Canada — specifically in or near ${location}. The city field MUST be an Alberta city (Edmonton, Calgary, Red Deer, Sherwood Park, St. Albert, Airdrie, etc.). NEVER use cities from other provinces or countries.
+7. The region field MUST match the Alberta region selected. If "Edmonton" was selected, use "edmonton". If "Calgary" use "calgary". If "Red Deer" use "red_deer".
 
 Generate 8-10 leads.`;
 

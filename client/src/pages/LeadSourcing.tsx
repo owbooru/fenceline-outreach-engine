@@ -651,7 +651,7 @@ export default function LeadSourcing() {
                       </div>
                       <div className="flex items-center gap-2">
                         <a
-                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company)}`}
+                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company + " " + (result.location || "Alberta"))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}

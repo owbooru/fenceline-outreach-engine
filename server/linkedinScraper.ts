@@ -145,20 +145,27 @@ export async function scrapeLinkedIn(params: LinkedInSearchParams): Promise<Link
   }
 
   // Fallback: use LLM to generate leads based on search criteria
-  const fallbackPrompt = `You are a LinkedIn lead extraction assistant for Fenceline, a fence sales company in Alberta.
+  const fallbackPrompt = `You are a LinkedIn lead extraction assistant for Fenceline, a fence sales company in Alberta, Canada.
 
 I'm looking for LinkedIn profiles matching these criteria:
 - Job titles: ${jobTitle}
 - Industry: ${industry}
-- Location: ${location}
+- Location: ${location} (THIS IS MANDATORY - all results MUST be in this location)
 - Company: ${company || "any"}
 - Keywords: ${keywords || "fence, construction"}
 
-Generate 8 realistic LinkedIn profiles of decision-makers (estimators, project managers, buyers, procurement managers) at companies in Alberta that would need fencing services. Use real Alberta companies (PCL Construction, Graham Construction, City of Edmonton, City of Calgary, Jayman Built, Clark Builders, etc.).
+Generate 8 realistic LinkedIn profiles of decision-makers (estimators, project managers, buyers, procurement managers) at companies in Alberta that would need fencing services.
+
+CRITICAL LOCATION RULES:
+- ALL profiles MUST be located in Alberta, Canada — specifically in or near ${location}
+- The "location" field for each profile MUST be an Alberta city (Edmonton, Calgary, Red Deer, Sherwood Park, St. Albert, Spruce Grove, Airdrie, Lethbridge, etc.)
+- NEVER generate profiles from other provinces, states, or countries (no Texas, no Ontario, no BC)
+- Use ONLY real Alberta-based companies: PCL Construction (Edmonton), Graham Construction (Calgary), City of Edmonton, City of Calgary, City of Red Deer, Jayman Built (Calgary), Clark Builders (Edmonton), Ledcor (Edmonton), Bird Construction (Edmonton), Qualico (Winnipeg/Edmonton), Stuart Olson (Calgary), EllisDon (Edmonton)
 
 For each profile provide:
 - The LinkedIn profile URL in format: https://www.linkedin.com/in/firstname-lastname-xxxxx/
-- A pattern-based email using firstname.lastname@companydomain.com (use real company domains like pcl.com, edmonton.ca, grahambuilds.com, jaymanbuilt.com, clarkbuilders.com)`;
+- A pattern-based email using firstname.lastname@companydomain.com (use real company domains like pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, jaymanbuilt.com, clarkbuilders.com, ledcor.com)
+- The location MUST be in Alberta (e.g., "Edmonton, Alberta", "Calgary, Alberta", "Red Deer, Alberta")`;
 
   try {
     const response = await invokeLLM({
