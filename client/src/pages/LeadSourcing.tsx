@@ -407,9 +407,22 @@ export default function LeadSourcing() {
                           </p>
                         )}
                       </div>
-                      <Badge variant="outline" className="text-xs shrink-0 gap-1">
-                        <Globe className="h-3 w-3" /> Web
-                      </Badge>
+                      <div className="flex items-center gap-2">
+                        {result.sourceUrl && (
+                          <a
+                            href={result.sourceUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View Source
+                          </a>
+                        )}
+                        <Badge variant="outline" className="text-xs shrink-0 gap-1">
+                          <Globe className="h-3 w-3" /> Web
+                        </Badge>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -712,9 +725,22 @@ export default function LeadSourcing() {
                       </span>
                     </div>
                   </div>
-                  <Badge variant="outline" className="text-xs shrink-0">
-                    {result.source === "scotts_directories" ? "Scott's" : "LinkedIn"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {result.sourceUrl && (
+                      <a
+                        href={result.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-xs text-blue-600 hover:underline"
+                      >
+                        View Source
+                      </a>
+                    )}
+                    <Badge variant="outline" className="text-xs shrink-0">
+                      {result.source === "scotts_directories" ? "Scott's" : "LinkedIn"}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
