@@ -135,46 +135,35 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
 }
 
 function buildLeadPrompt(searchQuery: string, location: string, industry: string, criteria: string): string {
-  return `You are a lead generation assistant for FenceLine, a site services rental company in Alberta, Canada.
+  return `You are a lead generation assistant for FenceLine, a site services company in Alberta, Canada.
 
-FenceLine provides:
-- Temporary Fence Sales & Rentals
-- Portable Toilet Rentals (including LittleJohns brand)
-- Waste Bin / Dumpster Rentals
-- Walkway Rentals (pedestrian protection)
-- Handwash Station Rentals
-- Full Site Services Packages
+FenceLine provides: Temporary Fence Sales & Rentals, Portable Toilet Rentals (LittleJohns), Waste Bin Rentals, Walkway Rentals, Handwash Station Rentals.
 
-Generate potential business contacts who need these services based on this search criteria:
+A salesperson is searching for contacts at a specific company. Generate realistic contacts based on:
 - Search: "${searchQuery}"
 - Location: ${location}
-- Industry focus: ${industry || "general site services"}
+- Company type: ${industry || "general contractor"}
 - Criteria: ${criteria}
 
-Target contacts at companies that would need site services:
-- General contractors with active construction projects
-- Home builders with new subdivision developments
-- Municipalities with infrastructure projects
-- Event organizers needing temporary site setup
-- Industrial/oil & gas sites needing portable facilities
-- Property developers breaking ground on new projects
-- Road construction and civil engineering firms
+Generate contacts who would be decision-makers for purchasing or renting site services at this company. Target roles:
+- Estimators (they price out projects and decide vendors)
+- Buyers / Purchasers (they place orders)
+- Project Managers (they oversee projects and approve vendors)
+- Project Coordinators (they coordinate site logistics)
+- Site Superintendents (field staff who sometimes order directly)
+- Operations Managers
 
 IMPORTANT RULES:
-1. Use REAL Alberta company names (PCL Construction, Graham Construction, City of Edmonton, City of Calgary, City of Red Deer, Ledcor, Bird Construction, Qualico, Jayman Built, Brookfield, ATCO, Stantec, WSP, Chandos Construction, Rohit Group, etc.)
-2. The sourceUrl MUST be a SPECIFIC page on the company's website where the project or service need is evident — NOT the homepage. Use real page paths like:
-   - For municipalities: their procurement/tender page (e.g., https://www.edmonton.ca/programs_services/procurement, https://www.calgary.ca/business/tenders, https://www.reddeer.ca/business/bids-and-tenders/)
-   - For construction companies: their projects page (e.g., https://www.pcl.com/projects, https://www.grahambuilds.com/projects, https://www.ledcor.com/projects)
-   - For home builders: their communities/developments page (e.g., https://www.jaymanbuilt.com/communities, https://www.qualico.com/communities)
-   - For events: the event's website or venue page
-   - NEVER use linkedin.com or a generic homepage like just "https://www.pcl.com"
-3. Generate realistic contact names for decision-makers (Project Managers, Site Superintendents, Estimators, Procurement Managers, Operations Managers)
-4. Phone numbers should use Alberta area codes (780, 403, 587)
-5. For email addresses, use firstname.lastname@companydomain.com with REAL company domains (pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, ledcor.com, birdconstruction.com, qualico.com, jaymanbuilt.com, stantec.com, atco.com)
-6. ALL contacts MUST be located in ${location}. Use appropriate cities for that region.
-7. The serviceNeed field should specify which FenceLine service they likely need (e.g., "Temporary fencing for construction site", "Portable toilets for new subdivision", "Waste bins for demolition project", "Full site services for commercial build")
+1. The company name from the search query is the TARGET company. ALL contacts must work at THAT specific company.
+2. Generate realistic contact names for the roles specified. Use common Canadian names.
+3. For email addresses, use the format firstname.lastname@companydomain.com. Use the REAL domain for the company (e.g., aecon.com, ellisdon.com, pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, ledcor.com, birdconstruction.com). ALWAYS provide an email.
+4. Phone numbers should use area codes appropriate for ${location} (780 for Edmonton, 403 for Calgary, 587 for either).
+5. ALL contacts MUST be located in ${location}.
+6. The sourceUrl should be null (we don't need it for this workflow).
+7. The serviceNeed should describe what this person likely purchases (e.g., "Purchases temp fence for job sites", "Coordinates site services for projects", "Approves vendor relationships").
+8. Generate 6-10 contacts with a MIX of roles (estimators, buyers, PMs, coordinators, supers).
 
-Generate 8-10 leads.`;
+Generate contacts now.`;
 }
 
 function buildTenderPrompt(searchQuery: string, location: string, criteria: string): string {

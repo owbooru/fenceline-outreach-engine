@@ -5,167 +5,127 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
-import { Search, Download, Building2, MapPin, Briefcase, Linkedin, BookOpen, Globe, Loader2, Sparkles, Info, Mail } from "lucide-react";
+import { Search, Download, Building2, MapPin, Briefcase, Linkedin, Users, Globe, Loader2, Sparkles, Mail, ArrowRight, CheckCircle2, Upload } from "lucide-react";
 
 export default function LeadSourcing() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [region, setRegion] = useState<string>("all");
-  const [companyType, setCompanyType] = useState<string>("all");
+  // Step 1: Company search
+  const [companyName, setCompanyName] = useState("");
+  const [jobFunction, setJobFunction] = useState("estimator");
+  const [region, setRegion] = useState("all");
+  const [segment, setSegment] = useState("general_contractor");
+
+  // Results state
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [selectedContacts, setSelectedContacts] = useState<Set<number>>(new Set());
   const [isSearching, setIsSearching] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
+  const [emailPattern, setEmailPattern] = useState("first.last");
+  const [companyDomain, setCompanyDomain] = useState("");
 
-  // Web search state
-  const [webCriteria, setWebCriteria] = useState("construction site services");
-  const [webRegion, setWebRegion] = useState("all");
-  const [webIndustry, setWebIndustry] = useState("all");
-  const [webKeywords, setWebKeywords] = useState("");
-  const [webResults, setWebResults] = useState<any[]>([]);
-  const [selectedWebResults, setSelectedWebResults] = useState<Set<number>>(new Set());
-  const [isWebSearching, setIsWebSearching] = useState(false);
-
-  // LinkedIn scraping state
-  const [liJobTitle, setLiJobTitle] = useState("project manager OR estimator");
-  const [liCompany, setLiCompany] = useState("");
-  const [liRegion, setLiRegion] = useState("all");
-  const [liIndustry, setLiIndustry] = useState("all");
-  const [liKeywords, setLiKeywords] = useState("");
-  const [liResults, setLiResults] = useState<any[]>([]);
-  const [selectedLiResults, setSelectedLiResults] = useState<Set<number>>(new Set());
-  const [isLinkedInScraping, setIsLinkedInScraping] = useState(false);
-
-  // CSV import state
+  // CSV Import state
   const [csvResults, setCsvResults] = useState<any[]>([]);
   const [selectedCsvResults, setSelectedCsvResults] = useState<Set<number>>(new Set());
   const [isDragging, setIsDragging] = useState(false);
 
   const createBulk = trpc.leads.createBulk.useMutation({
     onSuccess: (data) => {
-      toast.success(`${data.count} leads imported successfully`);
-      setSelectedResults(new Set());
-      setSelectedWebResults(new Set());
-      setSelectedLiResults(new Set());
-      setSearchResults([]);
-      setWebResults([]);
-      setLiResults([]);
+      toast.success(`${data.count} contacts imported to database`);
+      setSelectedContacts(new Set());
+      setSelectedCsvResults(new Set());
     },
-    onError: () => toast.error("Failed to import leads"),
+    onError: () => toast.error("Failed to import contacts"),
   });
 
-  const linkedInScrapeMutation = trpc.linkedin.scrape.useMutation({
+  const webSearch = trpc.webSearch.search.useMutation({
     onSuccess: (data) => {
-      setLiResults(data.results);
-      setIsLinkedInScraping(false);
+      setContacts(data.results);
+      setIsSearching(false);
       if (data.results.length === 0) {
-        toast.info("No LinkedIn profiles found. Try different criteria.");
+        toast.info("No contacts found. Try a different company or role.");
       } else {
-        toast.success(`Found ${data.results.length} LinkedIn profiles`);
+        toast.success(`Found ${data.results.length} contacts`);
+        // Auto-detect domain from first result
+        if (data.results[0]?.email) {
+          const domain = data.results[0].email.split("@")[1] || "";
+          setCompanyDomain(domain);
+        }
       }
     },
     onError: () => {
-      setIsLinkedInScraping(false);
-      toast.error("LinkedIn scraping failed. Please try again.");
-    },
-  });
-
-  const webSearchMutation = trpc.webSearch.search.useMutation({
-    onSuccess: (data) => {
-      setWebResults(data.results);
-      setIsWebSearching(false);
-      if (data.results.length === 0) {
-        toast.info("No results found. Try different criteria.");
-      } else {
-        toast.success(`Found ${data.results.length} potential leads`);
-      }
-    },
-    onError: (err) => {
-      setIsWebSearching(false);
-      toast.error("Web search failed. Please try again.");
-    },
-  });
-
-  const handleSearch = () => {
-    setIsSearching(true);
-    setTimeout(() => {
-      const mockResults = generateMockResults(searchQuery, region, companyType);
-      setSearchResults(mockResults);
       setIsSearching(false);
-    }, 1200);
-  };
+      toast.error("Search failed. Please try again.");
+    },
+  });
 
-  const handleWebSearch = () => {
-    setIsWebSearching(true);
-    setWebResults([]);
-    setSelectedWebResults(new Set());
-    webSearchMutation.mutate({
-      criteria: webCriteria,
-      region: webRegion,
-      industry: webIndustry,
-      customKeywords: webKeywords,
+  const handleCompanySearch = () => {
+    if (!companyName.trim()) {
+      toast.error("Enter a company name");
+      return;
+    }
+    setIsSearching(true);
+    setContacts([]);
+    setSelectedContacts(new Set());
+    webSearch.mutate({
+      criteria: `${jobFunction} at ${companyName}`,
+      region,
+      industry: segment,
+      customKeywords: companyName,
     });
   };
 
-  const handleLinkedInScrape = () => {
-    setIsLinkedInScraping(true);
-    setLiResults([]);
-    setSelectedLiResults(new Set());
-    linkedInScrapeMutation.mutate({
-      jobTitle: liJobTitle,
-      company: liCompany,
-      region: liRegion,
-      industry: liIndustry,
-      keywords: liKeywords,
-    });
-  };
-
-  const toggleLiSelect = (idx: number) => {
-    const next = new Set(selectedLiResults);
+  const toggleContact = (idx: number) => {
+    const next = new Set(selectedContacts);
     if (next.has(idx)) next.delete(idx);
     else next.add(idx);
-    setSelectedLiResults(next);
+    setSelectedContacts(next);
   };
 
-  const selectAllLinkedIn = () => {
-    if (selectedLiResults.size === liResults.length) {
-      setSelectedLiResults(new Set());
-    } else {
-      setSelectedLiResults(new Set(liResults.map((_, i) => i)));
-    }
+  const selectAll = () => {
+    if (selectedContacts.size === contacts.length) setSelectedContacts(new Set());
+    else setSelectedContacts(new Set(contacts.map((_, i) => i)));
   };
 
-  const importLinkedInSelected = () => {
-    const leadsToImport = liResults
-      .filter((_, i) => selectedLiResults.has(i))
+  const importSelected = () => {
+    const leadsToImport = contacts
+      .filter((_, i) => selectedContacts.has(i))
       .map((r) => ({
         firstName: r.firstName,
         lastName: r.lastName,
-        email: r.email || undefined,
+        email: r.email || generateEmail(r.firstName, r.lastName, companyDomain, emailPattern),
         jobTitle: r.jobTitle || undefined,
-        company: r.company,
-        companyType: r.companyType,
-        city: r.location || undefined,
-        region: r.region,
-        source: "linkedin" as const,
-        sourceUrl: r.linkedinUrl || undefined,
-        linkedinUrl: r.linkedinUrl || undefined,
+        company: companyName || r.company,
+        companyType: segment as any,
+        city: r.city || undefined,
+        region: region !== "all" ? region as any : undefined,
+        source: "web_search" as const,
       }));
     createBulk.mutate({ leads: leadsToImport });
   };
 
-  // CSV handlers
-  const generateEmailFromCsv = (firstName: string, lastName: string, company: string) => {
-    const domain = company.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20) + ".com";
-    return `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+  // Email pattern logic
+  const generateEmail = (first: string, last: string, domain: string, pattern: string) => {
+    if (!first || !last || !domain) return "";
+    const f = first.toLowerCase().replace(/[^a-z]/g, "");
+    const l = last.toLowerCase().replace(/[^a-z]/g, "");
+    switch (pattern) {
+      case "first.last": return `${f}.${l}@${domain}`;
+      case "f.last": return `${f[0]}.${l}@${domain}`;
+      case "flast": return `${f[0]}${l}@${domain}`;
+      case "first_last": return `${f}_${l}@${domain}`;
+      case "firstl": return `${f}${l[0]}@${domain}`;
+      case "first": return `${f}@${domain}`;
+      default: return `${f}.${l}@${domain}`;
+    }
   };
 
+  // CSV handlers
   const parseCsv = (text: string) => {
     const lines = text.trim().split("\n");
     if (lines.length < 2) return [];
     const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/["']/g, ""));
-    
-    // Map common Sales Navigator column names
+
     const colMap: Record<string, string> = {};
     headers.forEach((h, i) => {
       if (h.includes("first") && h.includes("name")) colMap.firstName = String(i);
@@ -179,21 +139,16 @@ export default function LeadSourcing() {
       else if (h.includes("email")) colMap.email = String(i);
     });
 
-    // If no mapped columns found, try positional (first,last,title,company,location)
     if (!colMap.firstName && headers.length >= 2) {
-      colMap.firstName = "0";
-      colMap.lastName = "1";
+      colMap.firstName = "0"; colMap.lastName = "1";
       if (headers.length >= 3) colMap.jobTitle = "2";
       if (headers.length >= 4) colMap.company = "3";
       if (headers.length >= 5) colMap.city = "4";
-      if (headers.length >= 6) colMap.linkedinUrl = "5";
     }
 
     return lines.slice(1).map(line => {
-      // Handle CSV with quoted fields
       const cols: string[] = [];
-      let current = "";
-      let inQuotes = false;
+      let current = ""; let inQuotes = false;
       for (const char of line) {
         if (char === '"') { inQuotes = !inQuotes; }
         else if (char === ',' && !inQuotes) { cols.push(current.trim()); current = ""; }
@@ -206,155 +161,55 @@ export default function LeadSourcing() {
       const company = cols[parseInt(colMap.company || "3")] || "";
       const jobTitle = cols[parseInt(colMap.jobTitle || "2")] || "";
       const city = cols[parseInt(colMap.city || "4")] || "";
-      const linkedinUrl = cols[parseInt(colMap.linkedinUrl || "5")] || "";
+      const linkedinUrl = colMap.linkedinUrl ? cols[parseInt(colMap.linkedinUrl)] : "";
       const existingEmail = colMap.email ? cols[parseInt(colMap.email)] : "";
 
       if (!firstName && !lastName) return null;
-
-      return {
-        firstName,
-        lastName,
-        jobTitle,
-        company,
-        city,
-        linkedinUrl: linkedinUrl.startsWith("http") ? linkedinUrl : undefined,
-        email: existingEmail || (firstName && lastName && company ? generateEmailFromCsv(firstName, lastName, company) : undefined),
-      };
+      return { firstName, lastName, jobTitle, company, city, linkedinUrl, email: existingEmail || undefined };
     }).filter(Boolean);
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
+    e.preventDefault(); setIsDragging(false);
     const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith(".csv")) {
+    if (file?.name.endsWith(".csv")) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const results = parseCsv(text);
+        const results = parseCsv(ev.target?.result as string);
         setCsvResults(results);
         setSelectedCsvResults(new Set(results.map((_, i) => i)));
         toast.success(`Parsed ${results.length} contacts from CSV`);
       };
       reader.readAsText(file);
-    } else {
-      toast.error("Please upload a .csv file");
-    }
+    } else toast.error("Please upload a .csv file");
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.name.endsWith(".csv")) {
+    if (file?.name.endsWith(".csv")) {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const text = ev.target?.result as string;
-        const results = parseCsv(text);
+        const results = parseCsv(ev.target?.result as string);
         setCsvResults(results);
         setSelectedCsvResults(new Set(results.map((_, i) => i)));
         toast.success(`Parsed ${results.length} contacts from CSV`);
       };
       reader.readAsText(file);
-    } else {
-      toast.error("Please upload a .csv file");
-    }
-  };
-
-  const toggleCsvSelect = (idx: number) => {
-    const next = new Set(selectedCsvResults);
-    if (next.has(idx)) next.delete(idx);
-    else next.add(idx);
-    setSelectedCsvResults(next);
-  };
-
-  const selectAllCsv = () => {
-    if (selectedCsvResults.size === csvResults.length) {
-      setSelectedCsvResults(new Set());
-    } else {
-      setSelectedCsvResults(new Set(csvResults.map((_, i) => i)));
-    }
+    } else toast.error("Please upload a .csv file");
   };
 
   const importCsvSelected = () => {
     const leadsToImport = csvResults
       .filter((_, i) => selectedCsvResults.has(i))
-      .map((r) => ({
+      .map((r: any) => ({
         firstName: r.firstName,
         lastName: r.lastName,
-        email: r.email || undefined,
+        email: r.email || (r.firstName && r.lastName && companyDomain ? generateEmail(r.firstName, r.lastName, companyDomain, emailPattern) : undefined),
         jobTitle: r.jobTitle || undefined,
-        company: r.company || undefined,
+        company: r.company || companyName || undefined,
         city: r.city || undefined,
         source: "linkedin" as const,
-        sourceUrl: r.linkedinUrl || undefined,
         linkedinUrl: r.linkedinUrl || undefined,
-      }));
-    createBulk.mutate({ leads: leadsToImport });
-  };
-
-  const toggleSelect = (idx: number) => {
-    const next = new Set(selectedResults);
-    if (next.has(idx)) next.delete(idx);
-    else next.add(idx);
-    setSelectedResults(next);
-  };
-
-  const toggleWebSelect = (idx: number) => {
-    const next = new Set(selectedWebResults);
-    if (next.has(idx)) next.delete(idx);
-    else next.add(idx);
-    setSelectedWebResults(next);
-  };
-
-  const selectAll = () => {
-    if (selectedResults.size === searchResults.length) {
-      setSelectedResults(new Set());
-    } else {
-      setSelectedResults(new Set(searchResults.map((_, i) => i)));
-    }
-  };
-
-  const selectAllWeb = () => {
-    if (selectedWebResults.size === webResults.length) {
-      setSelectedWebResults(new Set());
-    } else {
-      setSelectedWebResults(new Set(webResults.map((_, i) => i)));
-    }
-  };
-
-  const importSelected = () => {
-    const leadsToImport = searchResults
-      .filter((_, i) => selectedResults.has(i))
-      .map((r) => ({
-        firstName: r.firstName,
-        lastName: r.lastName,
-        email: r.email,
-        phone: r.phone,
-        jobTitle: r.jobTitle,
-        company: r.company,
-        companyType: r.companyType,
-        city: r.city,
-        region: r.region,
-        source: r.source as "scotts_directories" | "linkedin",
-        sourceUrl: r.sourceUrl,
-      }));
-    createBulk.mutate({ leads: leadsToImport });
-  };
-
-  const importWebSelected = () => {
-    const leadsToImport = webResults
-      .filter((_, i) => selectedWebResults.has(i))
-      .map((r) => ({
-        firstName: r.firstName,
-        lastName: r.lastName,
-        email: r.email || undefined,
-        phone: r.phone || undefined,
-        jobTitle: r.jobTitle || undefined,
-        company: r.company,
-        companyType: r.companyType,
-        city: r.city || undefined,
-        region: r.region,
-        source: "web_search" as const,
-        sourceUrl: r.sourceUrl || undefined,
       }));
     createBulk.mutate({ leads: leadsToImport });
   };
@@ -364,500 +219,271 @@ export default function LeadSourcing() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Lead Sourcing</h1>
         <p className="text-muted-foreground mt-1">
-          Search and import contacts from Scott's Directories, LinkedIn, and the web.
+          Find contacts at target companies — Rob's workflow, automated.
         </p>
       </div>
 
-      <Tabs defaultValue="web" className="space-y-4">
+      <Tabs defaultValue="company" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="web" className="gap-2">
-            <Globe className="h-4 w-4" />
-            Web Search
-          </TabsTrigger>
-          <TabsTrigger value="scotts" className="gap-2">
-            <BookOpen className="h-4 w-4" />
-            Scott's Directories
-          </TabsTrigger>
-          <TabsTrigger value="linkedin" className="gap-2">
-            <Linkedin className="h-4 w-4" />
-            LinkedIn
+          <TabsTrigger value="company" className="gap-2">
+            <Building2 className="h-4 w-4" />
+            Company Search
           </TabsTrigger>
           <TabsTrigger value="csv" className="gap-2">
-            <Download className="h-4 w-4" />
+            <Upload className="h-4 w-4" />
             CSV Import
           </TabsTrigger>
         </TabsList>
 
-        {/* ─── Web Search Tab ─────────────────────────────────────────────── */}
-        <TabsContent value="web" className="space-y-4">
+        {/* ─── Company Search (Rob's Workflow) ─────────────────────────────── */}
+        <TabsContent value="company" className="space-y-4">
+          {/* Step 1: Pick a Company */}
           <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">Search the Internet</CardTitle>
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" /> AI-Powered
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Find companies needing site services — fencing, portable toilets, waste bins, walkways, and more. Also searches active tenders and bids.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Search Criteria */}
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">What are they looking for?</label>
-                  <Select value={webCriteria} onValueChange={setWebCriteria}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="construction site services">All Site Services</SelectItem>
-                      <SelectItem value="temporary fence rentals">Temporary Fence Rentals</SelectItem>
-                      <SelectItem value="temporary fence sales">Temporary Fence Sales</SelectItem>
-                      <SelectItem value="portable toilet rentals construction">Portable Toilet Rentals</SelectItem>
-                      <SelectItem value="waste bin dumpster rentals construction">Waste Bin / Dumpster Rentals</SelectItem>
-                      <SelectItem value="pedestrian walkway rentals construction">Walkway Rentals</SelectItem>
-                      <SelectItem value="handwash station rentals site">Handwash Station Rentals</SelectItem>
-                      <SelectItem value="construction site hoarding">Construction Hoarding</SelectItem>
-                      <SelectItem value="crowd control barriers events">Crowd Control / Event Barriers</SelectItem>
-                      <SelectItem value="tender RFP site services fencing">Tenders & Bids (RFPs)</SelectItem>
-                      <SelectItem value="new construction projects breaking ground">New Construction Projects</SelectItem>
-                      <SelectItem value="municipal infrastructure projects">Municipal Infrastructure</SelectItem>
-                      <SelectItem value="event site setup services">Event Site Setup</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Region</label>
-                    <Select value={webRegion} onValueChange={setWebRegion}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Alberta</SelectItem>
-                        <SelectItem value="edmonton">Edmonton, AB</SelectItem>
-                        <SelectItem value="calgary">Calgary, AB</SelectItem>
-                        <SelectItem value="red_deer">Red Deer, AB</SelectItem>
-                        <SelectItem value="bc">British Columbia</SelectItem>
-                        <SelectItem value="sk">Saskatchewan</SelectItem>
-                        <SelectItem value="on">Ontario</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Industry</label>
-                    <Select value={webIndustry} onValueChange={setWebIndustry}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Industries</SelectItem>
-                        <SelectItem value="construction_fencing">Construction / GC</SelectItem>
-                        <SelectItem value="municipal_projects">Municipal / Government</SelectItem>
-                        <SelectItem value="residential_fencing">Residential Builders</SelectItem>
-                        <SelectItem value="commercial_fencing">Commercial Development</SelectItem>
-                        <SelectItem value="event_fencing">Events & Festivals</SelectItem>
-                        <SelectItem value="portable_toilets">Portable Sanitation</SelectItem>
-                        <SelectItem value="waste_bins">Waste Management</SelectItem>
-                        <SelectItem value="full_site_services">Full Site Services</SelectItem>
-                        <SelectItem value="tenders_bids">Tenders & Procurement</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Custom Keywords</label>
-                    <Input
-                      value={webKeywords}
-                      onChange={(e) => setWebKeywords(e.target.value)}
-                      placeholder="e.g., demolition, new subdivision..."
-                      onKeyDown={(e) => e.key === "Enter" && handleWebSearch()}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <Button onClick={handleWebSearch} disabled={isWebSearching} className="gap-2">
-                  {isWebSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
-                  {isWebSearching ? "Searching..." : "Search the Web"}
-                </Button>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Info className="h-3 w-3" />
-                  AI will extract contact details from web results
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Web Search Results */}
-          {webResults.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
-                    Web Results ({webResults.length})
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={selectAllWeb}>
-                      {selectedWebResults.size === webResults.length ? "Deselect All" : "Select All"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      disabled={selectedWebResults.size === 0 || createBulk.isPending}
-                      onClick={importWebSelected}
-                      className="gap-2"
-                    >
-                      {createBulk.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                      Import {selectedWebResults.size} Selected
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {webResults.map((result, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => toggleWebSelect(idx)}
-                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedWebResults.has(idx)
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        selectedWebResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                      }`}>
-                        {selectedWebResults.has(idx) && (
-                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
-                          {result.jobTitle && <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />{result.company}
-                          </span>
-                          {result.city && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />{result.city}
-                            </span>
-                          )}
-                        </div>
-                        {result.email && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs text-foreground">{result.email}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
-                          </div>
-                        )}
-                        {result.serviceNeed && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50">{result.serviceNeed}</Badge>
-                          </div>
-                        )}
-                        {result.relevanceNote && (
-                          <p className="text-xs text-muted-foreground/80 mt-1 italic">
-                            {result.relevanceNote}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " " + (result.serviceNeed || result.relevanceNote || "projects") + " " + (result.city || ""))}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          Find Project
-                        </a>
-                        <a
-                          href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " site services procurement")}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-muted-foreground hover:text-blue-600 hover:underline"
-                        >
-                          Company
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* ─── Scott's Directories Tab ────────────────────────────────────── */}
-        <TabsContent value="scotts" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base">Search Scott's Directories</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="md:col-span-2">
-                  <Input
-                    placeholder="Search companies, contacts, or job titles..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  />
-                </div>
-                <Select value={region} onValueChange={setRegion}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Alberta</SelectItem>
-                    <SelectItem value="edmonton">Edmonton</SelectItem>
-                    <SelectItem value="calgary">Calgary</SelectItem>
-                    <SelectItem value="red_deer">Red Deer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={companyType} onValueChange={setCompanyType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Company Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="municipality">Municipalities</SelectItem>
-                    <SelectItem value="general_contractor">General Contractors</SelectItem>
-                    <SelectItem value="home_builder">Home Builders</SelectItem>
-                    <SelectItem value="civil">Civil Projects</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="gap-2">
-                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Search Directories
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ─── LinkedIn Tab (Real Scraping) ─────────────────────────────── */}
-        <TabsContent value="linkedin" className="space-y-4">
-          <Card>
-            <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">Scrape LinkedIn Profiles</CardTitle>
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  <Sparkles className="h-3 w-3" /> Live Scraping
-                </Badge>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Searches Google for real LinkedIn profiles matching your criteria, then AI extracts structured contact data.
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">1</span>
+                Pick a Company & Role
+              </CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Enter the company name and select the job functions you're targeting — just like searching Scott's Directories.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Job Title</label>
-                  <Select value={liJobTitle} onValueChange={setLiJobTitle}>
+                  <Label className="text-sm">Company Name</Label>
+                  <Input
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    placeholder="e.g., AECON, EllisDon, PCL Construction..."
+                    onKeyDown={(e) => e.key === "Enter" && handleCompanySearch()}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Job Function</Label>
+                  <Select value={jobFunction} onValueChange={setJobFunction}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="project manager OR estimator">Project Manager / Estimator</SelectItem>
-                      <SelectItem value="buyer OR procurement manager">Buyer / Procurement</SelectItem>
-                      <SelectItem value="operations manager OR site superintendent">Operations / Site Super</SelectItem>
-                      <SelectItem value="construction manager">Construction Manager</SelectItem>
-                      <SelectItem value="facilities manager">Facilities Manager</SelectItem>
-                      <SelectItem value="property manager">Property Manager</SelectItem>
-                      <SelectItem value="director of operations">Director of Operations</SelectItem>
+                      <SelectItem value="estimator">Estimator</SelectItem>
+                      <SelectItem value="buyer">Buyer / Purchaser</SelectItem>
+                      <SelectItem value="project manager">Project Manager</SelectItem>
+                      <SelectItem value="project coordinator">Project Coordinator</SelectItem>
+                      <SelectItem value="site superintendent">Site Superintendent</SelectItem>
+                      <SelectItem value="operations manager">Operations Manager</SelectItem>
+                      <SelectItem value="procurement manager">Procurement Manager</SelectItem>
+                      <SelectItem value="all roles">All Decision Makers</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Company Type</Label>
+                  <Select value={segment} onValueChange={setSegment}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="general_contractor">General Contractor</SelectItem>
+                      <SelectItem value="municipality">Municipality / City / County</SelectItem>
+                      <SelectItem value="home_builder">Home Builder</SelectItem>
+                      <SelectItem value="civil">Civil / Infrastructure</SelectItem>
+                      <SelectItem value="other">Rental Company / Other</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Company (optional)</label>
-                  <Input
-                    value={liCompany}
-                    onChange={(e) => setLiCompany(e.target.value)}
-                    placeholder="e.g., PCL Construction, City of Edmonton..."
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Region</label>
-                  <Select value={liRegion} onValueChange={setLiRegion}>
+                  <Label className="text-sm">Region</Label>
+                  <Select value={region} onValueChange={setRegion}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Alberta</SelectItem>
-                      <SelectItem value="edmonton">Edmonton</SelectItem>
-                      <SelectItem value="calgary">Calgary</SelectItem>
-                      <SelectItem value="red_deer">Red Deer</SelectItem>
+                      <SelectItem value="edmonton">Edmonton, AB</SelectItem>
+                      <SelectItem value="calgary">Calgary, AB</SelectItem>
+                      <SelectItem value="red_deer">Red Deer, AB</SelectItem>
+                      <SelectItem value="bc">British Columbia</SelectItem>
+                      <SelectItem value="sk">Saskatchewan</SelectItem>
+                      <SelectItem value="on">Ontario</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Industry</label>
-                  <Select value={liIndustry} onValueChange={setLiIndustry}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Industries</SelectItem>
-                      <SelectItem value="municipality">Government / Municipal</SelectItem>
-                      <SelectItem value="general_contractor">Construction / GC</SelectItem>
-                      <SelectItem value="home_builder">Residential Builder</SelectItem>
-                      <SelectItem value="civil">Civil Engineering</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Additional Keywords</label>
-                  <Input
-                    value={liKeywords}
-                    onChange={(e) => setLiKeywords(e.target.value)}
-                    placeholder="e.g., fence, construction..."
-                    onKeyDown={(e) => e.key === "Enter" && handleLinkedInScrape()}
-                  />
                 </div>
               </div>
-              <Button onClick={handleLinkedInScrape} disabled={isLinkedInScraping} className="gap-2">
-                {isLinkedInScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
-                {isLinkedInScraping ? "Scraping LinkedIn..." : "Scrape LinkedIn Profiles"}
+              <Button onClick={handleCompanySearch} disabled={isSearching} className="gap-2">
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                {isSearching ? "Finding contacts..." : "Find Contacts"}
               </Button>
             </CardContent>
           </Card>
 
-          {/* LinkedIn Results */}
-          {liResults.length > 0 && (
+          {/* Step 2: Email Pattern */}
+          {contacts.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">2</span>
+                  Email Pattern
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Set the email format for {companyName || "this company"}. Most companies use one consistent pattern.
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Email Pattern</Label>
+                    <Select value={emailPattern} onValueChange={setEmailPattern}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="first.last">first.last@ (john.smith@)</SelectItem>
+                        <SelectItem value="f.last">f.last@ (j.smith@)</SelectItem>
+                        <SelectItem value="flast">flast@ (jsmith@)</SelectItem>
+                        <SelectItem value="first_last">first_last@ (john_smith@)</SelectItem>
+                        <SelectItem value="firstl">firstl@ (johns@)</SelectItem>
+                        <SelectItem value="first">first@ (john@)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Company Domain</Label>
+                    <Input
+                      value={companyDomain}
+                      onChange={(e) => setCompanyDomain(e.target.value)}
+                      placeholder="e.g., aecon.com, ellisdon.com"
+                    />
+                  </div>
+                </div>
+                {companyDomain && contacts[0] && (
+                  <div className="mt-3 p-2 bg-muted/30 rounded-md">
+                    <p className="text-xs text-muted-foreground">Preview: <span className="font-mono text-foreground">{generateEmail(contacts[0].firstName, contacts[0].lastName, companyDomain, emailPattern)}</span></p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Step 3: Contact Results */}
+          {contacts.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
-                    LinkedIn Profiles Found ({liResults.length})
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <span className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">3</span>
+                    Contacts Found ({contacts.length})
                   </CardTitle>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={selectAllLinkedIn}>
-                      {selectedLiResults.size === liResults.length ? "Deselect All" : "Select All"}
+                    <Button variant="outline" size="sm" onClick={selectAll}>
+                      {selectedContacts.size === contacts.length ? "Deselect All" : "Select All"}
                     </Button>
                     <Button
                       size="sm"
-                      disabled={selectedLiResults.size === 0 || createBulk.isPending}
-                      onClick={importLinkedInSelected}
+                      disabled={selectedContacts.size === 0 || createBulk.isPending}
+                      onClick={importSelected}
                       className="gap-2"
                     >
-                      {createBulk.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
-                      Import {selectedLiResults.size} Selected
+                      {createBulk.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                      Import {selectedContacts.size} to Database
                     </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {liResults.map((result, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => toggleLiSelect(idx)}
-                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedLiResults.has(idx)
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        selectedLiResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                      }`}>
-                        {selectedLiResults.has(idx) && (
-                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
-                          <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>
+                  {contacts.map((contact, idx) => {
+                    const email = contact.email || generateEmail(contact.firstName, contact.lastName, companyDomain, emailPattern);
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => toggleContact(idx)}
+                        className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
+                          selectedContacts.has(idx)
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                            : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          selectedContacts.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {selectedContacts.has(idx) && (
+                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
                         </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />{result.company}
-                          </span>
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />{result.location}
-                          </span>
-                        </div>
-                        {result.email && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs text-foreground">{result.email}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{contact.firstName} {contact.lastName}</span>
+                            {contact.jobTitle && <Badge variant="secondary" className="text-xs">{contact.jobTitle}</Badge>}
                           </div>
-                        )}
-                        {result.summary && (
-                          <p className="text-xs text-muted-foreground/80 mt-1 italic">{result.summary}</p>
-                        )}
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Building2 className="h-3 w-3" />{contact.company || companyName}
+                            </span>
+                            {contact.city && (
+                              <span className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />{contact.city}
+                              </span>
+                            )}
+                          </div>
+                          {email && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <Mail className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-mono text-foreground">{email}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <a
-                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.jobTitle + " " + result.company + " " + (result.location || "Alberta"))}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-blue-600 hover:underline"
-                        >
-                          Find Role on LinkedIn
-                        </a>
-                        <a
-                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-muted-foreground hover:text-blue-600 hover:underline"
-                        >
-                          Search Name
-                        </a>
-                        <Badge variant="outline" className="text-xs shrink-0 gap-1">
-                          <Linkedin className="h-3 w-3" /> LinkedIn
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
-        {/* ─── CSV Import Tab ─────────────────────────────────────────────── */}
+        {/* ─── CSV Import (Sales Navigator Export) ─────────────────────────── */}
         <TabsContent value="csv" className="space-y-4">
           <Card>
             <CardHeader className="pb-4">
-              <div className="flex items-center gap-2">
-                <CardTitle className="text-base">Import from CSV</CardTitle>
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  <Linkedin className="h-3 w-3" /> Sales Navigator Export
-                </Badge>
-              </div>
+              <CardTitle className="text-base">Import from Sales Navigator CSV</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">
-                Export your lead list from LinkedIn Sales Navigator as CSV, then drag and drop it here. Pattern-based emails will be auto-generated for each contact.
+                Export your lead list from LinkedIn Sales Navigator, then drop the CSV here. Emails will be generated using the pattern above.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Email Pattern (for imported contacts)</Label>
+                  <Select value={emailPattern} onValueChange={setEmailPattern}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="first.last">first.last@ (john.smith@)</SelectItem>
+                      <SelectItem value="f.last">f.last@ (j.smith@)</SelectItem>
+                      <SelectItem value="flast">flast@ (jsmith@)</SelectItem>
+                      <SelectItem value="first_last">first_last@ (john_smith@)</SelectItem>
+                      <SelectItem value="firstl">firstl@ (johns@)</SelectItem>
+                      <SelectItem value="first">first@ (john@)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Company Domain (if all same company)</Label>
+                  <Input
+                    value={companyDomain}
+                    onChange={(e) => setCompanyDomain(e.target.value)}
+                    placeholder="e.g., aecon.com (leave blank if mixed)"
+                  />
+                </div>
+              </div>
+
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                   isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/20 hover:border-primary/50"
@@ -866,36 +492,31 @@ export default function LeadSourcing() {
                 onDragLeave={() => setIsDragging(false)}
                 onDrop={handleFileDrop}
               >
-                <Download className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                <Upload className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
                 <p className="text-sm font-medium">Drag & drop your CSV file here</p>
                 <p className="text-xs text-muted-foreground mt-1">Or click to browse</p>
                 <input
                   type="file"
                   accept=".csv"
                   onChange={handleFileSelect}
-                  className="absolute inset-0 opacity-0 cursor-pointer"
+                  className="opacity-0 cursor-pointer"
                   style={{ position: 'relative', marginTop: '8px' }}
                 />
-              </div>
-
-              <div className="p-3 bg-muted/30 rounded-lg">
-                <p className="text-xs font-medium mb-2">Expected CSV columns (Sales Navigator format):</p>
-                <p className="text-xs text-muted-foreground">First Name, Last Name, Title, Company, Location, LinkedIn URL</p>
-                <p className="text-xs text-muted-foreground mt-1">The system will auto-detect column headers and map them accordingly.</p>
               </div>
             </CardContent>
           </Card>
 
-          {/* CSV Import Results */}
+          {/* CSV Results */}
           {csvResults.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">
-                    Imported Contacts ({csvResults.length})
-                  </CardTitle>
+                  <CardTitle className="text-base">Imported Contacts ({csvResults.length})</CardTitle>
                   <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={selectAllCsv}>
+                    <Button variant="outline" size="sm" onClick={() => {
+                      if (selectedCsvResults.size === csvResults.length) setSelectedCsvResults(new Set());
+                      else setSelectedCsvResults(new Set(csvResults.map((_, i) => i)));
+                    }}>
                       {selectedCsvResults.size === csvResults.length ? "Deselect All" : "Select All"}
                     </Button>
                     <Button
@@ -904,11 +525,7 @@ export default function LeadSourcing() {
                       onClick={importCsvSelected}
                       className="gap-2"
                     >
-                      {createBulk.isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Download className="h-3.5 w-3.5" />
-                      )}
+                      {createBulk.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                       Import {selectedCsvResults.size} to Database
                     </Button>
                   </div>
@@ -916,217 +533,55 @@ export default function LeadSourcing() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {csvResults.map((result, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => toggleCsvSelect(idx)}
-                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedCsvResults.has(idx)
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "hover:bg-muted/50"
-                      }`}
-                    >
-                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                        selectedCsvResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                      }`}>
-                        {selectedCsvResults.has(idx) && (
-                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
-                          {result.jobTitle && <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Building2 className="h-3 w-3" />{result.company}
-                          </span>
-                          {result.city && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="h-3 w-3" />{result.city}
-                            </span>
+                  {csvResults.map((r: any, idx) => {
+                    const email = r.email || (r.firstName && r.lastName && companyDomain ? generateEmail(r.firstName, r.lastName, companyDomain, emailPattern) : "");
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          const next = new Set(selectedCsvResults);
+                          if (next.has(idx)) next.delete(idx); else next.add(idx);
+                          setSelectedCsvResults(next);
+                        }}
+                        className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
+                          selectedCsvResults.has(idx) ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "hover:bg-muted/50"
+                        }`}
+                      >
+                        <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                          selectedCsvResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                        }`}>
+                          {selectedCsvResults.has(idx) && (
+                            <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
                           )}
                         </div>
-                        {result.email && (
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs text-foreground">{result.email}</span>
-                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{r.firstName} {r.lastName}</span>
+                            {r.jobTitle && <Badge variant="secondary" className="text-xs">{r.jobTitle}</Badge>}
                           </div>
-                        )}
+                          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                            {r.company && <span className="flex items-center gap-1"><Building2 className="h-3 w-3" />{r.company}</span>}
+                            {r.city && <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{r.city}</span>}
+                          </div>
+                          {email && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <Mail className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-xs font-mono text-foreground">{email}</span>
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      {result.linkedinUrl && (
-                        <a
-                          href={result.linkedinUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-xs text-blue-600 hover:underline shrink-0"
-                        >
-                          View Profile
-                        </a>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
           )}
         </TabsContent>
       </Tabs>
-
-      {/* Scott's / LinkedIn Search Results */}
-      {searchResults.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base">
-                Search Results ({searchResults.length})
-              </CardTitle>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" onClick={selectAll}>
-                  {selectedResults.size === searchResults.length ? "Deselect All" : "Select All"}
-                </Button>
-                <Button
-                  size="sm"
-                  disabled={selectedResults.size === 0 || createBulk.isPending}
-                  onClick={importSelected}
-                  className="gap-2"
-                >
-                  {createBulk.isPending ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Download className="h-3.5 w-3.5" />
-                  )}
-                  Import {selectedResults.size} Selected
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {searchResults.map((result, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => toggleSelect(idx)}
-                  className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
-                    selectedResults.has(idx)
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "hover:bg-muted/50"
-                  }`}
-                >
-                  <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                    selectedResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
-                  }`}>
-                    {selectedResults.has(idx) && (
-                      <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
-                      <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>
-                    </div>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Building2 className="h-3 w-3" />{result.company}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <MapPin className="h-3 w-3" />{result.city}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Briefcase className="h-3 w-3" />{result.companyTypeLabel}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <a
-                      href={`https://www.google.com/search?q=${encodeURIComponent(result.company + " " + result.city + " construction projects")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-xs text-blue-600 hover:underline"
-                    >
-                      Find Company
-                    </a>
-                    <Badge variant="outline" className="text-xs shrink-0">
-                      {result.source === "scotts_directories" ? "Scott's" : "LinkedIn"}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
-}
-
-// Mock data generator for Scott's / LinkedIn demonstration
-function generateMockResults(query: string, region: string, companyType: string) {
-  const companies: Record<string, any[]> = {
-    municipality: [
-      { company: "City of Edmonton", city: "Edmonton", region: "edmonton" },
-      { company: "City of Calgary", city: "Calgary", region: "calgary" },
-      { company: "City of Red Deer", city: "Red Deer", region: "red_deer" },
-      { company: "Strathcona County", city: "Sherwood Park", region: "edmonton" },
-      { company: "Rocky View County", city: "Calgary", region: "calgary" },
-    ],
-    general_contractor: [
-      { company: "PCL Construction", city: "Edmonton", region: "edmonton" },
-      { company: "Graham Construction", city: "Calgary", region: "calgary" },
-      { company: "Clark Builders", city: "Edmonton", region: "edmonton" },
-      { company: "Stuart Olson", city: "Calgary", region: "calgary" },
-      { company: "EllisDon Alberta", city: "Edmonton", region: "edmonton" },
-    ],
-    home_builder: [
-      { company: "Jayman Built", city: "Calgary", region: "calgary" },
-      { company: "Brookfield Residential", city: "Calgary", region: "calgary" },
-      { company: "Landmark Homes", city: "Edmonton", region: "edmonton" },
-      { company: "Pacesetter Homes", city: "Edmonton", region: "edmonton" },
-      { company: "Shane Homes", city: "Calgary", region: "calgary" },
-    ],
-  };
-
-  const titles = ["Project Manager", "Estimator", "Procurement Manager", "Buyer", "Site Superintendent", "Operations Manager"];
-  const firstNames = ["James", "Sarah", "Michael", "Jennifer", "David", "Lisa", "Robert", "Amanda", "Chris", "Nicole"];
-  const lastNames = ["Anderson", "Thompson", "Wilson", "Martinez", "Johnson", "Brown", "Taylor", "Davis", "Miller", "Garcia"];
-
-  const typeLabel: Record<string, string> = {
-    municipality: "Municipality",
-    general_contractor: "General Contractor",
-    home_builder: "Home Builder",
-    civil: "Civil",
-  };
-
-  let pool: any[] = [];
-  const types = companyType === "all" ? ["municipality", "general_contractor", "home_builder"] : [companyType];
-
-  types.forEach((type) => {
-    (companies[type] || []).forEach((c) => {
-      if (region !== "all" && c.region !== region) return;
-      pool.push({ ...c, companyType: type, companyTypeLabel: typeLabel[type] || type });
-    });
-  });
-
-  return pool.slice(0, 10).map((c, i) => ({
-    firstName: firstNames[i % firstNames.length],
-    lastName: lastNames[i % lastNames.length],
-    email: `${firstNames[i % firstNames.length].toLowerCase()}.${lastNames[i % lastNames.length].toLowerCase()}@${c.company.toLowerCase().replace(/\s+/g, "")}.ca`,
-    phone: `780-${String(Math.floor(Math.random() * 900) + 100)}-${String(Math.floor(Math.random() * 9000) + 1000)}`,
-    jobTitle: titles[i % titles.length],
-    company: c.company,
-    companyType: c.companyType,
-    companyTypeLabel: c.companyTypeLabel,
-    city: c.city,
-    region: c.region,
-    source: i % 2 === 0 ? "scotts_directories" : "linkedin",
-    sourceUrl: i % 2 === 0 ? `https://scottsdirectories.com/listing/${i}` : `https://linkedin.com/in/${firstNames[i % firstNames.length].toLowerCase()}${lastNames[i % lastNames.length].toLowerCase()}`,
-  }));
 }
