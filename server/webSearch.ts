@@ -51,7 +51,7 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
   const criteria = params.criteria || "fence";
   const customKeywords = params.customKeywords || "";
 
-  const searchQuery = `${criteria} ${industry} ${customKeywords} ${location}`.trim();
+  const searchQuery = `${criteria} ${industry} ${customKeywords} ${location} -site:linkedin.com`.trim();
 
   // Use Google Search via Data API
   let searchResults: any;
@@ -70,12 +70,16 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
     searchResults = null;
   }
 
-  // Format search results for LLM extraction
+  // Format search results for LLM extraction — filter out any LinkedIn URLs
   let searchContext = "";
   if (searchResults && typeof searchResults === "object") {
     const results = (searchResults as any)?.organic_results || (searchResults as any)?.results || [];
     if (Array.isArray(results)) {
-      searchContext = results.slice(0, 15).map((r: any, i: number) => {
+      const nonLinkedInResults = results.filter((r: any) => {
+        const url = (r.link || r.url || "").toLowerCase();
+        return !url.includes("linkedin.com");
+      });
+      searchContext = nonLinkedInResults.slice(0, 15).map((r: any, i: number) => {
         return `Result ${i + 1}:\nTitle: ${r.title || ""}\nURL: ${r.link || r.url || ""}\nSnippet: ${r.snippet || r.description || ""}\n`;
       }).join("\n");
     }
@@ -101,6 +105,8 @@ Search Results:
 ${searchContext}
 
 Extract up to 10 potential leads. For each lead, provide realistic contact information based on the companies found. If exact contact details aren't available, infer likely decision-maker roles (estimator, project manager, procurement).
+
+IMPORTANT: The sourceUrl field must be the actual company website, directory listing, news article, or government page where the lead was found — NEVER a linkedin.com URL. Use the URLs from the search results above. If no non-LinkedIn URL is available, set sourceUrl to null.
 
 Return ONLY a JSON array of objects with these fields:
 - firstName (string)
