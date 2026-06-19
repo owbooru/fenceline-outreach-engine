@@ -18,7 +18,7 @@ export default function LeadSourcing() {
   const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
 
   // Web search state
-  const [webCriteria, setWebCriteria] = useState("people needing fencing");
+  const [webCriteria, setWebCriteria] = useState("construction site services");
   const [webRegion, setWebRegion] = useState("all");
   const [webIndustry, setWebIndustry] = useState("all");
   const [webKeywords, setWebKeywords] = useState("");
@@ -399,29 +399,32 @@ export default function LeadSourcing() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Search the web for companies and people who need fencing services. AI extracts structured contact information from results.
+                Find companies needing site services — fencing, portable toilets, waste bins, walkways, and more. Also searches active tenders and bids.
               </p>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Search Criteria */}
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium">Search Criteria</label>
+                  <label className="text-sm font-medium">What are they looking for?</label>
                   <Select value={webCriteria} onValueChange={setWebCriteria}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="people needing fencing">People Needing Fencing</SelectItem>
+                      <SelectItem value="construction site services">All Site Services</SelectItem>
                       <SelectItem value="temporary fence rentals">Temporary Fence Rentals</SelectItem>
-                      <SelectItem value="construction site fencing needed">Construction Site Fencing</SelectItem>
-                      <SelectItem value="municipal fencing projects">Municipal Fencing Projects</SelectItem>
-                      <SelectItem value="residential fence installation">Residential Fence Installation</SelectItem>
-                      <SelectItem value="commercial property fencing">Commercial Property Fencing</SelectItem>
-                      <SelectItem value="event temporary fencing">Event Temporary Fencing</SelectItem>
-                      <SelectItem value="industrial perimeter fencing">Industrial Perimeter Fencing</SelectItem>
-                      <SelectItem value="new construction projects needing fencing">New Construction Projects</SelectItem>
-                      <SelectItem value="property developers needing fencing">Property Developers</SelectItem>
+                      <SelectItem value="temporary fence sales">Temporary Fence Sales</SelectItem>
+                      <SelectItem value="portable toilet rentals construction">Portable Toilet Rentals</SelectItem>
+                      <SelectItem value="waste bin dumpster rentals construction">Waste Bin / Dumpster Rentals</SelectItem>
+                      <SelectItem value="pedestrian walkway rentals construction">Walkway Rentals</SelectItem>
+                      <SelectItem value="handwash station rentals site">Handwash Station Rentals</SelectItem>
+                      <SelectItem value="construction site hoarding">Construction Hoarding</SelectItem>
+                      <SelectItem value="crowd control barriers events">Crowd Control / Event Barriers</SelectItem>
+                      <SelectItem value="tender RFP site services fencing">Tenders & Bids (RFPs)</SelectItem>
+                      <SelectItem value="new construction projects breaking ground">New Construction Projects</SelectItem>
+                      <SelectItem value="municipal infrastructure projects">Municipal Infrastructure</SelectItem>
+                      <SelectItem value="event site setup services">Event Site Setup</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -435,27 +438,32 @@ export default function LeadSourcing() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Alberta</SelectItem>
-                        <SelectItem value="edmonton">Edmonton</SelectItem>
-                        <SelectItem value="calgary">Calgary</SelectItem>
-                        <SelectItem value="red_deer">Red Deer</SelectItem>
+                        <SelectItem value="edmonton">Edmonton, AB</SelectItem>
+                        <SelectItem value="calgary">Calgary, AB</SelectItem>
+                        <SelectItem value="red_deer">Red Deer, AB</SelectItem>
+                        <SelectItem value="bc">British Columbia</SelectItem>
+                        <SelectItem value="sk">Saskatchewan</SelectItem>
+                        <SelectItem value="on">Ontario</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-medium">Industry Focus</label>
+                    <label className="text-sm font-medium">Industry</label>
                     <Select value={webIndustry} onValueChange={setWebIndustry}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Industries</SelectItem>
-                        <SelectItem value="fence_installation">Fence Installation</SelectItem>
-                        <SelectItem value="temp_fence_rental">Temp Fence Rental</SelectItem>
-                        <SelectItem value="construction_fencing">Construction Fencing</SelectItem>
-                        <SelectItem value="municipal_projects">Municipal Projects</SelectItem>
-                        <SelectItem value="residential_fencing">Residential Fencing</SelectItem>
-                        <SelectItem value="commercial_fencing">Commercial Fencing</SelectItem>
-                        <SelectItem value="event_fencing">Event Fencing</SelectItem>
+                        <SelectItem value="construction_fencing">Construction / GC</SelectItem>
+                        <SelectItem value="municipal_projects">Municipal / Government</SelectItem>
+                        <SelectItem value="residential_fencing">Residential Builders</SelectItem>
+                        <SelectItem value="commercial_fencing">Commercial Development</SelectItem>
+                        <SelectItem value="event_fencing">Events & Festivals</SelectItem>
+                        <SelectItem value="portable_toilets">Portable Sanitation</SelectItem>
+                        <SelectItem value="waste_bins">Waste Management</SelectItem>
+                        <SelectItem value="full_site_services">Full Site Services</SelectItem>
+                        <SelectItem value="tenders_bids">Tenders & Procurement</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -464,7 +472,7 @@ export default function LeadSourcing() {
                     <Input
                       value={webKeywords}
                       onChange={(e) => setWebKeywords(e.target.value)}
-                      placeholder="e.g., chain link, privacy fence..."
+                      placeholder="e.g., demolition, new subdivision..."
                       onKeyDown={(e) => e.key === "Enter" && handleWebSearch()}
                     />
                   </div>
@@ -553,6 +561,11 @@ export default function LeadSourcing() {
                             <Mail className="h-3 w-3 text-muted-foreground" />
                             <span className="text-xs text-foreground">{result.email}</span>
                             <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-200 bg-amber-50">Pattern</Badge>
+                          </div>
+                        )}
+                        {result.serviceNeed && (
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-emerald-700 border-emerald-200 bg-emerald-50">{result.serviceNeed}</Badge>
                           </div>
                         )}
                         {result.relevanceNote && (
