@@ -79,3 +79,9 @@
 - [x] Region and industry filters for web scraping
 - [x] Import scraped contacts into lead database with source tracking
 - [x] Predefined search templates (fence installation, temp fence rentals, construction projects, municipal projects)
+
+## LinkedIn Real Scraping
+- [x] Build real LinkedIn scraping backend using Google site:linkedin.com search
+- [x] Extract structured contact data from LinkedIn profile search results via LLM
+- [x] Replace mock LinkedIn tab with real scraping functionality
+- [x] Support job title, company, and region filters for LinkedIn search

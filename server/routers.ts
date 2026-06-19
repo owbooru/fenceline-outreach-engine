@@ -5,6 +5,7 @@ import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { z } from "zod";
 import * as db from "./db";
 import { searchWebForLeads } from "./webSearch";
+import { scrapeLinkedIn } from "./linkedinScraper";
 
 export const appRouter = router({
   system: systemRouter,
@@ -393,6 +394,22 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const results = await searchWebForLeads(input);
+        return { results };
+      }),
+  }),
+
+  // ─── LinkedIn Scraper ──────────────────────────────────────────────────────────
+  linkedin: router({
+    scrape: protectedProcedure
+      .input(z.object({
+        jobTitle: z.string(),
+        company: z.string(),
+        region: z.string(),
+        industry: z.string(),
+        keywords: z.string(),
+      }))
+      .mutation(async ({ input }) => {
+        const results = await scrapeLinkedIn(input);
         return { results };
       }),
   }),

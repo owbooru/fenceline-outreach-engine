@@ -61,7 +61,7 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
         q: searchQuery,
         gl: "CA",
         hl: "en",
-        num: 20,
+        num: "10",
       },
     });
   } catch (error) {

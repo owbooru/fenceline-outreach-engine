@@ -26,15 +26,43 @@ export default function LeadSourcing() {
   const [selectedWebResults, setSelectedWebResults] = useState<Set<number>>(new Set());
   const [isWebSearching, setIsWebSearching] = useState(false);
 
+  // LinkedIn scraping state
+  const [liJobTitle, setLiJobTitle] = useState("project manager OR estimator");
+  const [liCompany, setLiCompany] = useState("");
+  const [liRegion, setLiRegion] = useState("all");
+  const [liIndustry, setLiIndustry] = useState("all");
+  const [liKeywords, setLiKeywords] = useState("");
+  const [liResults, setLiResults] = useState<any[]>([]);
+  const [selectedLiResults, setSelectedLiResults] = useState<Set<number>>(new Set());
+  const [isLinkedInScraping, setIsLinkedInScraping] = useState(false);
+
   const createBulk = trpc.leads.createBulk.useMutation({
     onSuccess: (data) => {
       toast.success(`${data.count} leads imported successfully`);
       setSelectedResults(new Set());
       setSelectedWebResults(new Set());
+      setSelectedLiResults(new Set());
       setSearchResults([]);
       setWebResults([]);
+      setLiResults([]);
     },
     onError: () => toast.error("Failed to import leads"),
+  });
+
+  const linkedInScrapeMutation = trpc.linkedin.scrape.useMutation({
+    onSuccess: (data) => {
+      setLiResults(data.results);
+      setIsLinkedInScraping(false);
+      if (data.results.length === 0) {
+        toast.info("No LinkedIn profiles found. Try different criteria.");
+      } else {
+        toast.success(`Found ${data.results.length} LinkedIn profiles`);
+      }
+    },
+    onError: () => {
+      setIsLinkedInScraping(false);
+      toast.error("LinkedIn scraping failed. Please try again.");
+    },
   });
 
   const webSearchMutation = trpc.webSearch.search.useMutation({
@@ -72,6 +100,52 @@ export default function LeadSourcing() {
       industry: webIndustry,
       customKeywords: webKeywords,
     });
+  };
+
+  const handleLinkedInScrape = () => {
+    setIsLinkedInScraping(true);
+    setLiResults([]);
+    setSelectedLiResults(new Set());
+    linkedInScrapeMutation.mutate({
+      jobTitle: liJobTitle,
+      company: liCompany,
+      region: liRegion,
+      industry: liIndustry,
+      keywords: liKeywords,
+    });
+  };
+
+  const toggleLiSelect = (idx: number) => {
+    const next = new Set(selectedLiResults);
+    if (next.has(idx)) next.delete(idx);
+    else next.add(idx);
+    setSelectedLiResults(next);
+  };
+
+  const selectAllLinkedIn = () => {
+    if (selectedLiResults.size === liResults.length) {
+      setSelectedLiResults(new Set());
+    } else {
+      setSelectedLiResults(new Set(liResults.map((_, i) => i)));
+    }
+  };
+
+  const importLinkedInSelected = () => {
+    const leadsToImport = liResults
+      .filter((_, i) => selectedLiResults.has(i))
+      .map((r) => ({
+        firstName: r.firstName,
+        lastName: r.lastName,
+        jobTitle: r.jobTitle || undefined,
+        company: r.company,
+        companyType: r.companyType,
+        city: r.location || undefined,
+        region: r.region,
+        source: "linkedin" as const,
+        sourceUrl: r.linkedinUrl || undefined,
+        linkedinUrl: r.linkedinUrl || undefined,
+      }));
+    createBulk.mutate({ leads: leadsToImport });
   };
 
   const toggleSelect = (idx: number) => {
@@ -392,52 +466,183 @@ export default function LeadSourcing() {
           </Card>
         </TabsContent>
 
-        {/* ─── LinkedIn Tab ───────────────────────────────────────────────── */}
+        {/* ─── LinkedIn Tab (Real Scraping) ─────────────────────────────── */}
         <TabsContent value="linkedin" className="space-y-4">
           <Card>
             <CardHeader className="pb-4">
-              <CardTitle className="text-base">Search LinkedIn</CardTitle>
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">Scrape LinkedIn Profiles</CardTitle>
+                <Badge variant="secondary" className="gap-1 text-xs">
+                  <Sparkles className="h-3 w-3" /> Live Scraping
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Searches Google for real LinkedIn profiles matching your criteria, then AI extracts structured contact data.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Job Title</label>
+                  <Select value={liJobTitle} onValueChange={setLiJobTitle}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="project manager OR estimator">Project Manager / Estimator</SelectItem>
+                      <SelectItem value="buyer OR procurement manager">Buyer / Procurement</SelectItem>
+                      <SelectItem value="operations manager OR site superintendent">Operations / Site Super</SelectItem>
+                      <SelectItem value="construction manager">Construction Manager</SelectItem>
+                      <SelectItem value="facilities manager">Facilities Manager</SelectItem>
+                      <SelectItem value="property manager">Property Manager</SelectItem>
+                      <SelectItem value="director of operations">Director of Operations</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Company (optional)</label>
                   <Input
-                    placeholder="Search by name, title, or company..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    value={liCompany}
+                    onChange={(e) => setLiCompany(e.target.value)}
+                    placeholder="e.g., PCL Construction, City of Edmonton..."
                   />
                 </div>
-                <Select value={region} onValueChange={setRegion}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Region" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Alberta</SelectItem>
-                    <SelectItem value="edmonton">Edmonton</SelectItem>
-                    <SelectItem value="calgary">Calgary</SelectItem>
-                    <SelectItem value="red_deer">Red Deer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select value={companyType} onValueChange={setCompanyType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Industry" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Industries</SelectItem>
-                    <SelectItem value="municipality">Government / Municipal</SelectItem>
-                    <SelectItem value="general_contractor">Construction / GC</SelectItem>
-                    <SelectItem value="home_builder">Residential Builder</SelectItem>
-                    <SelectItem value="civil">Civil Engineering</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
-              <Button onClick={handleSearch} disabled={isSearching} className="gap-2">
-                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Search LinkedIn
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Region</label>
+                  <Select value={liRegion} onValueChange={setLiRegion}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Alberta</SelectItem>
+                      <SelectItem value="edmonton">Edmonton</SelectItem>
+                      <SelectItem value="calgary">Calgary</SelectItem>
+                      <SelectItem value="red_deer">Red Deer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Industry</label>
+                  <Select value={liIndustry} onValueChange={setLiIndustry}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Industries</SelectItem>
+                      <SelectItem value="municipality">Government / Municipal</SelectItem>
+                      <SelectItem value="general_contractor">Construction / GC</SelectItem>
+                      <SelectItem value="home_builder">Residential Builder</SelectItem>
+                      <SelectItem value="civil">Civil Engineering</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Additional Keywords</label>
+                  <Input
+                    value={liKeywords}
+                    onChange={(e) => setLiKeywords(e.target.value)}
+                    placeholder="e.g., fence, construction..."
+                    onKeyDown={(e) => e.key === "Enter" && handleLinkedInScrape()}
+                  />
+                </div>
+              </div>
+              <Button onClick={handleLinkedInScrape} disabled={isLinkedInScraping} className="gap-2">
+                {isLinkedInScraping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Linkedin className="h-4 w-4" />}
+                {isLinkedInScraping ? "Scraping LinkedIn..." : "Scrape LinkedIn Profiles"}
               </Button>
             </CardContent>
           </Card>
+
+          {/* LinkedIn Results */}
+          {liResults.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">
+                    LinkedIn Profiles Found ({liResults.length})
+                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={selectAllLinkedIn}>
+                      {selectedLiResults.size === liResults.length ? "Deselect All" : "Select All"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={selectedLiResults.size === 0 || createBulk.isPending}
+                      onClick={importLinkedInSelected}
+                      className="gap-2"
+                    >
+                      {createBulk.isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Download className="h-3.5 w-3.5" />
+                      )}
+                      Import {selectedLiResults.size} Selected
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {liResults.map((result, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => toggleLiSelect(idx)}
+                      className={`flex items-center gap-4 p-3 rounded-lg border cursor-pointer transition-all ${
+                        selectedLiResults.has(idx)
+                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                          : "hover:bg-muted/50"
+                      }`}
+                    >
+                      <div className={`h-4 w-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        selectedLiResults.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
+                      }`}>
+                        {selectedLiResults.has(idx) && (
+                          <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="none">
+                            <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-sm">{result.firstName} {result.lastName}</span>
+                          <Badge variant="secondary" className="text-xs">{result.jobTitle}</Badge>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />{result.company}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />{result.location}
+                          </span>
+                        </div>
+                        {result.summary && (
+                          <p className="text-xs text-muted-foreground/80 mt-1 italic">{result.summary}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {result.linkedinUrl && (
+                          <a
+                            href={result.linkedinUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-blue-600 hover:underline"
+                          >
+                            View Profile
+                          </a>
+                        )}
+                        <Badge variant="outline" className="text-xs shrink-0 gap-1">
+                          <Linkedin className="h-3 w-3" /> LinkedIn
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
