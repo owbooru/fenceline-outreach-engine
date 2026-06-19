@@ -649,15 +649,24 @@ export default function LeadSourcing() {
                           <p className="text-xs text-muted-foreground/80 mt-1 italic">{result.summary}</p>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <a
-                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company + " " + (result.location || "Alberta"))}`}
+                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.jobTitle + " " + result.company + " " + (result.location || "Alberta"))}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="text-xs text-blue-600 hover:underline"
                         >
-                          Find on LinkedIn
+                          Find Role on LinkedIn
+                        </a>
+                        <a
+                          href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(result.firstName + " " + result.lastName + " " + result.company)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-xs text-muted-foreground hover:text-blue-600 hover:underline"
+                        >
+                          Search Name
                         </a>
                         <Badge variant="outline" className="text-xs shrink-0 gap-1">
                           <Linkedin className="h-3 w-3" /> LinkedIn
