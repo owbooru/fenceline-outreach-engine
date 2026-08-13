@@ -133,3 +133,6 @@
 - [x] Enroll Leads button on each campaign (select leads from Segment to assign to campaign)
 - [x] Sending schedule (Mon-Fri 8am-5pm MST only, no weekends/evenings)
 - [x] Gmail App Password setup instructions in Settings page
+
+## Campaign Enrolled Leads Status
+- [x] Show enrolled leads list on each campaign with contacted/pending status indicator
