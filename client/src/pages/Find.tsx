@@ -17,7 +17,7 @@ interface SearchResult {
 }
 
 const searchSources = [
-  { name: "LinkedIn People Search", count: "Searching for matching profiles...", delay: 800 },
+  { name: "Alberta procurement portals", count: "Connecting to public tender sources...", delay: 800 },
   { name: "Alberta Purchasing Connection", count: "Scraping active fencing tenders...", delay: 1600 },
   { name: "MERX Procurement Portal", count: "Checking open solicitations...", delay: 2200 },
   { name: "City of Edmonton", count: "Checking municipal procurement...", delay: 2800 },
@@ -239,7 +239,7 @@ export default function Find() {
       {activeTab === "search" && !searching && !showResults && (
         <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
           <p className="text-[13px] text-[#444] leading-relaxed">
-            <strong>Real data only.</strong> Results come from LinkedIn API and live scraping of public tender portals (Alberta Purchasing Connection, MERX, City of Edmonton). No AI-generated names or fake companies. Focused on finding real contacts who need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing. Requires Chromium on the server for JavaScript-rendered portals.
+            <strong>Real data only.</strong> Results come from live scraping of public tender &amp; procurement portals (Alberta Purchasing Connection, MERX, City of Edmonton). No AI-generated names or fake companies. Focused on finding real fencing opportunities — temporary, permanent, construction hoarding, event perimeter, and security fencing. Chromium is installed on this server for the JavaScript-rendered portals.
           </p>
         </div>
       )}
@@ -381,18 +381,15 @@ export default function Find() {
           
           {results.length === 0 ? (
             <div className="text-center py-8">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg mb-4">
-                <span className="text-amber-600 text-[14px]">⚠️</span>
-                <span className="text-[13px] text-amber-800 font-medium">Chromium not detected on this server</span>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#f4f7f6] border border-[#d4ddd8] rounded-lg mb-4">
+                <span className="text-[14px]">🔎</span>
+                <span className="text-[13px] text-[#555] font-medium">No matching tenders found right now</span>
               </div>
               <p className="text-[14px] text-[#666] max-w-md mx-auto">
-                Real-time scraping of tender portals (Alberta Purchasing Connection, MERX) requires Chromium installed on the server.
-              </p>
-              <p className="text-[13px] text-[#888] mt-2 max-w-md mx-auto">
-                On your VPS, run: <code className="bg-[#f0f0f0] px-2 py-0.5 rounded text-[12px]">sudo apt install chromium-browser</code> then restart the app.
+                The public portals (Alberta Purchasing Connection, MERX, City of Edmonton) had no open fencing-related solicitations for these criteria. Try a broader Service Type or Region.
               </p>
               <p className="text-[13px] text-[#888] mt-3">
-                Or use the <button onClick={() => setActiveTab("csv")} className="text-[#1a4750] font-semibold hover:underline">CSV Import</button> tab to import contacts from Scott's Directories or Sales Navigator.
+                Or use the <button onClick={() => setActiveTab("csv")} className="text-[#1a4750] font-semibold hover:underline">CSV Import</button> tab to bring in contacts from Scott's Directories or Sales Navigator.
               </p>
             </div>
           ) : (
