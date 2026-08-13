@@ -4,6 +4,44 @@ export default function SettingsPage() {
       <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Settings</h1>
       <p className="text-[14px] text-[#777] mt-1.5">Connect your data sources and configure the lead engine</p>
 
+      {/* Future Service Expansion */}
+      <div className="mt-6">
+        <div className="text-[12px] font-bold text-[#999] uppercase tracking-wider mb-3">Service Categories</div>
+        <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mb-4">
+          <p className="text-[13px] text-[#444] leading-relaxed">Currently focused on <strong>fencing</strong> (temporary, permanent, hoarding, event, security). Additional service lines can be enabled for future outreach campaigns when ready.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-4 bg-white rounded-lg border border-[#e8e8ee]">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] font-semibold">Fencing (All Types)</div>
+              <span className="badge-green">Active</span>
+            </div>
+            <div className="text-[12px] text-[#888] mt-1">Temp fence, perm fence, hoarding, event, security</div>
+          </div>
+          <div className="p-4 bg-white rounded-lg border border-dashed border-[#ddd] opacity-60">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] font-semibold text-[#999]">Portable Toilets</div>
+              <span className="badge-gray">Phase 2</span>
+            </div>
+            <div className="text-[12px] text-[#aaa] mt-1">LittleJohns brand · Enable when ready to expand</div>
+          </div>
+          <div className="p-4 bg-white rounded-lg border border-dashed border-[#ddd] opacity-60">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] font-semibold text-[#999]">Waste Bins / Dumpsters</div>
+              <span className="badge-gray">Phase 2</span>
+            </div>
+            <div className="text-[12px] text-[#aaa] mt-1">Construction waste removal · Enable when ready</div>
+          </div>
+          <div className="p-4 bg-white rounded-lg border border-dashed border-[#ddd] opacity-60">
+            <div className="flex items-center justify-between">
+              <div className="text-[14px] font-semibold text-[#999]">Walkways & Handwash</div>
+              <span className="badge-gray">Phase 2</span>
+            </div>
+            <div className="text-[12px] text-[#aaa] mt-1">Pedestrian walkways, handwash stations · Enable when ready</div>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-6">
         <div className="text-[12px] font-bold text-[#999] uppercase tracking-wider mb-3">Domain Reputation Protection</div>
         <div className="p-4 bg-[#f4f7f5] border border-[#c4d8cc] rounded-xl flex items-center gap-3 mb-4">

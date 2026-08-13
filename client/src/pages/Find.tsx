@@ -1,6 +1,7 @@
 import { useState } from "react";
+import { useCallback } from "react";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Search, Check } from "lucide-react";
+import { Loader2, Search, Check, Upload, Plus, Trash2 } from "lucide-react";
 
 interface SearchResult {
   name: string;
@@ -24,7 +25,7 @@ const searchSources = [
 ];
 
 export default function Find() {
-  const [service, setService] = useState("all_site_services");
+  const [service, setService] = useState("all_fencing");
   const [region, setRegion] = useState("all_alberta");
   const [industry, setIndustry] = useState("all");
   const [searching, setSearching] = useState(false);
@@ -33,9 +34,124 @@ export default function Find() {
   const [showResults, setShowResults] = useState(false);
   const [showTenders, setShowTenders] = useState(false);
   const [currentSourceLabel, setCurrentSourceLabel] = useState("Searching sources...");
+  const [activeTab, setActiveTab] = useState<"search" | "csv">("search");
+  const [csvData, setCsvData] = useState<SearchResult[]>([]);
+  const [csvFileName, setCsvFileName] = useState("");
+  const [dragOver, setDragOver] = useState(false);
+  const [patternCompany, setPatternCompany] = useState("");
+  const [patternDomain, setPatternDomain] = useState("");
+  const [patternFormat, setPatternFormat] = useState("first.last");
+  const [savedPatterns, setSavedPatterns] = useState<{company: string; domain: string; format: string}[]>([
+    { company: "AECON", domain: "aecon.com", format: "first.last" },
+    { company: "PCL Construction", domain: "pcl.com", format: "flast" },
+    { company: "EllisDon", domain: "ellisdon.com", format: "first.last" },
+    { company: "Graham Construction", domain: "graham.ca", format: "flast" },
+    { company: "City of Edmonton", domain: "edmonton.ca", format: "first.last" },
+    { company: "City of Calgary", domain: "calgary.ca", format: "first.last" },
+    { company: "Bird Construction", domain: "bird.ca", format: "first.last" },
+    { company: "Ledcor Group", domain: "ledcor.com", format: "flast" },
+  ]);
 
   const webSearch = trpc.webSearch.search.useMutation();
   const createBulk = trpc.leads.createBulk.useMutation();
+
+  const handleCsvDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) parseCsv(file);
+  }, [savedPatterns]);
+
+  const handleCsvSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) parseCsv(file);
+  };
+
+  const parseCsv = (file: File) => {
+    setCsvFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split("\n").filter(l => l.trim());
+      if (lines.length < 2) return;
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/"/g, ""));
+      const firstNameIdx = headers.findIndex(h => h.includes("first") && h.includes("name"));
+      const lastNameIdx = headers.findIndex(h => h.includes("last") && h.includes("name"));
+      const companyIdx = headers.findIndex(h => h.includes("company") || h.includes("organization"));
+      const titleIdx = headers.findIndex(h => h.includes("title") || h.includes("position") || h.includes("role"));
+      const locationIdx = headers.findIndex(h => h.includes("location") || h.includes("city") || h.includes("geography"));
+
+      const parsed: SearchResult[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",").map(c => c.trim().replace(/"/g, ""));
+        const firstName = firstNameIdx >= 0 ? cols[firstNameIdx] : "";
+        const lastName = lastNameIdx >= 0 ? cols[lastNameIdx] : "";
+        const company = companyIdx >= 0 ? cols[companyIdx] : "";
+        const title = titleIdx >= 0 ? cols[titleIdx] : "";
+        const location = locationIdx >= 0 ? cols[locationIdx] : "";
+        if (!firstName && !lastName) continue;
+
+        // Apply known pattern
+        const companyLower = company.toLowerCase();
+        let email = "";
+        let pattern = "";
+        const matched = savedPatterns.find(p => companyLower.includes(p.company.toLowerCase()) || p.company.toLowerCase().includes(companyLower));
+        if (matched) {
+          const fn = firstName.toLowerCase();
+          const ln = lastName.toLowerCase();
+          if (matched.format === "first.last") email = `${fn}.${ln}@${matched.domain}`;
+          else if (matched.format === "flast") email = `${fn[0]}${ln}@${matched.domain}`;
+          else if (matched.format === "firstl") email = `${fn}${ln[0]}@${matched.domain}`;
+          else if (matched.format === "first_last") email = `${fn}_${ln}@${matched.domain}`;
+          else email = `${fn}.${ln}@${matched.domain}`;
+          pattern = `${matched.format}@${matched.domain}`;
+        } else {
+          const domain = companyLower.replace(/[^a-z0-9]/g, "").slice(0, 12) + ".com";
+          email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+          pattern = `first.last@${domain} (guessed)`;
+        }
+
+        parsed.push({
+          name: `${firstName} ${lastName}`,
+          company,
+          role: title,
+          region: location,
+          email,
+          pattern,
+          status: matched ? "Pattern" : "Unverified",
+          source: "CSV Import",
+        });
+      }
+      setCsvData(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const importCsv = () => {
+    if (csvData.length === 0) return;
+    const leads = csvData.map(r => ({
+      firstName: r.name.split(" ")[0] || "",
+      lastName: r.name.split(" ").slice(1).join(" ") || "",
+      email: r.email,
+      company: r.company,
+      jobTitle: r.role,
+      city: r.region,
+      source: "linkedin" as const,
+    }));
+    createBulk.mutate({ leads });
+  };
+
+  const addPattern = () => {
+    if (!patternCompany || !patternDomain) return;
+    setSavedPatterns(prev => [...prev, { company: patternCompany, domain: patternDomain, format: patternFormat }]);
+    setPatternCompany("");
+    setPatternDomain("");
+    setPatternFormat("first.last");
+  };
+
+  const removePattern = (idx: number) => {
+    setSavedPatterns(prev => prev.filter((_, i) => i !== idx));
+  };
 
   const runSearch = async () => {
     setSearching(true);
@@ -111,7 +227,7 @@ export default function Find() {
       {!searching && !showResults && (
         <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
           <p className="text-[13px] text-[#444] leading-relaxed">
-            <strong>Where the engine looks:</strong> Company websites (team pages, about pages, contact pages), Google search results for LinkedIn profiles, public Facebook business pages, industry association member directories, MERX, Alberta Purchasing Connection, municipal procurement portals, and any paid directory APIs you connect in Settings.
+            <strong>Where the engine looks:</strong> Company websites (team pages, about pages, contact pages), Google search results for LinkedIn profiles, industry association member directories, MERX, Alberta Purchasing Connection, municipal procurement portals, and any paid directory APIs you connect in Settings. Focused on finding companies that need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing.
           </p>
         </div>
       )}
@@ -125,13 +241,13 @@ export default function Find() {
           <div>
             <label className="text-[13px] font-semibold block mb-1.5">Service Type</label>
             <select value={service} onChange={e => setService(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-[#ddd] text-[14px] bg-white">
-              <option value="all_site_services">All Site Services</option>
+              <option value="all_fencing">All Fencing (Sales & Rentals)</option>
               <option value="temp_fence_rentals">Temporary Fence Rentals</option>
               <option value="temp_fence_sales">Temporary Fence Sales</option>
-              <option value="portable_toilets">Portable Toilet Rentals</option>
-              <option value="waste_bins">Waste Bin / Dumpster Rentals</option>
-              <option value="walkways">Walkway Rentals</option>
-              <option value="handwash">Handwash Station Rentals</option>
+              <option value="perm_fence_sales">Permanent Fence Sales</option>
+              <option value="construction_hoarding">Construction Hoarding</option>
+              <option value="event_fencing">Event / Crowd Control Fencing</option>
+              <option value="security_fencing">Security / Perimeter Fencing</option>
             </select>
           </div>
           <div>
@@ -229,18 +345,18 @@ export default function Find() {
             </div>
             <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
               <div className="text-[12px] font-semibold text-[#8c7355] mb-1">🏗️ Building Permit</div>
-              <div className="text-[13px] font-semibold">Windermere Mixed-Use Development — 340 units</div>
-              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 12 · Edmonton · GC: Qualico</div>
+              <div className="text-[13px] font-semibold">Windermere Mixed-Use — Perimeter & Construction Fencing</div>
+              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 12 · Edmonton · 340 units · GC: Qualico</div>
             </div>
             <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
               <div className="text-[12px] font-semibold text-[#8c7355] mb-1">📋 Alberta Purchasing Connection</div>
-              <div className="text-[13px] font-semibold">Strathcona County — Site Services for Rec Centre Expansion</div>
-              <div className="text-[12px] text-[#888] mt-1">Posted Jun 14 · Closes Jun 28 · Fencing + portable sanitation</div>
+              <div className="text-[13px] font-semibold">Strathcona County — Security Fencing for Rec Centre Expansion</div>
+              <div className="text-[12px] text-[#888] mt-1">Posted Jun 14 · Closes Jun 28 · Chain link + temp construction fence</div>
             </div>
             <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
               <div className="text-[12px] font-semibold text-[#8c7355] mb-1">🔨 Demolition Permit</div>
-              <div className="text-[13px] font-semibold">Old Strathcona Block Demolition — New Condo Tower</div>
-              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 10 · Edmonton · New build to follow</div>
+              <div className="text-[13px] font-semibold">Old Strathcona Block Demolition — Construction Hoarding Required</div>
+              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 10 · Edmonton · Full perimeter hoarding + temp fence</div>
             </div>
           </div>
         </div>

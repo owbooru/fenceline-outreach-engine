@@ -33,13 +33,13 @@ const regionMap: Record<string, string> = {
 };
 
 const serviceMap: Record<string, string> = {
-  all_site_services: "construction site services fencing portable toilets waste bins",
-  temp_fence_rentals: "temporary fence rental",
-  temp_fence_sales: "temporary fence sales",
-  portable_toilets: "portable toilet rental",
-  waste_bins: "waste bin dumpster rental",
-  walkways: "pedestrian walkway rental",
-  handwash: "handwash station rental",
+  all_fencing: "fencing temporary fence permanent fence construction hoarding",
+  temp_fence_rentals: "temporary fence rental construction site fencing",
+  temp_fence_sales: "temporary fence sales wholesale fence",
+  perm_fence_sales: "permanent fence sales chain link fence ornamental fence",
+  construction_hoarding: "construction hoarding plywood hoarding site barrier",
+  event_fencing: "event fencing crowd control barrier perimeter fencing",
+  security_fencing: "security fencing perimeter fence industrial fence",
 };
 
 const industryMap: Record<string, string> = {
@@ -277,16 +277,16 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
 
 function buildSearchPrompt(service: string, location: string, industry: string, criteria: string, existingCount: number): string {
   const count = Math.max(6, 12 - existingCount);
-  return `Generate ${count} realistic B2B contacts for a site services company (FenceLine) doing cold outreach to ${industry || "construction companies, municipalities, and home builders"} in ${location}.
+  return `Generate ${count} realistic B2B contacts for a commercial fencing company (FenceLine) doing cold outreach to ${industry || "construction companies, municipalities, and home builders"} in ${location}.
 
-FenceLine provides: Temporary Fence Sales & Rentals, Portable Toilet Rentals (including LittleJohns brand), Waste Bin Rentals, Walkway Rentals, Handwash Station Rentals. They serve construction sites, events, municipalities, and industrial projects.
+FenceLine provides: Temporary Fence Sales & Rentals, Permanent Fence Sales, Construction Hoarding, Event/Crowd Control Fencing, Security/Perimeter Fencing. They serve construction sites, events, municipalities, and industrial projects across Canada.
 
 Service being sold: ${service}
 Criteria: ${criteria}
 
 CONTEXT: These contacts are for COLD OUTREACH. We need people who:
-- Are at companies with ACTIVE or UPCOMING projects that need site services
-- Have decision-making authority to purchase or recommend site services vendors
+- Are at companies with ACTIVE or UPCOMING projects that need FENCING
+- Have decision-making authority to purchase or recommend fencing vendors
 - Work at companies in ${location} that are currently building, developing, or managing construction/infrastructure projects
 
 RULES:
@@ -298,14 +298,15 @@ RULES:
    - Events: Edmonton Expo Centre, Calgary Stampede, K-Days, Heritage Festival, Taste of Edmonton
    - Environmental: ATCO EnviroFront, Clean Harbors, GFL Environmental
 2. Generate realistic Canadian names (mix of ethnicities common in Alberta: English, French, Ukrainian, Chinese, South Asian, Indigenous)
-3. Target roles that PURCHASE site services: Estimator, Buyer, Project Manager, Procurement Manager, Site Superintendent, Operations Manager, Project Coordinator, Facilities Manager
+3. Target roles that PURCHASE fencing: Estimator, Buyer, Project Manager, Procurement Manager, Site Superintendent, Operations Manager, Project Coordinator, Facilities Manager
 4. For "source" field, randomly assign one of: "Web Scrape", "Scott's", "Apollo.io" — distribute roughly evenly
-5. serviceNeed must be SPECIFIC and explain WHY this person needs site services RIGHT NOW. Examples:
+5. serviceNeed must be SPECIFIC and explain WHY this person needs FENCING RIGHT NOW. Examples:
    - "Managing 3 active highway projects requiring 10,000+ ft of temp fencing"
-   - "Coordinating portable sanitation for 340-unit residential development"
-   - "Procurement lead for all site services across 5 active Edmonton projects"
-   - "Overseeing LRT extension requiring construction hoarding and pedestrian walkways"
-   - "Planning summer festival requiring 2km perimeter fencing + 40 portable toilets"
+   - "New 340-unit residential development needing perimeter and construction fencing"
+   - "Procurement lead for fencing across 5 active Edmonton construction projects"
+   - "LRT extension requiring 3km of construction hoarding and pedestrian barriers"
+   - "Planning summer festival requiring 2km perimeter crowd control fencing"
+   - "Industrial site expansion needing 8-ft security chain link perimeter fence"
 6. city must be a specific city within ${location}
 7. Each contact MUST be at a DIFFERENT company — no duplicates
 8. Mix of "Verified" and "Pattern" for status — about 70% Verified, 30% Pattern`;

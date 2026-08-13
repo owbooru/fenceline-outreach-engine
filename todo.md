@@ -92,3 +92,14 @@
 - [x] Keep LinkedIn tab as search tool, added "Find Role" and "Search Name" options
 - [x] Focus results on email + specific source page URL (projects page, tender page, procurement page)
 - [x] Source links now point to specific pages where service need was found (not homepages)
+
+## Refocus on Fencing Only
+- [x] Update Find page filters to focus on fencing needs (remove toilets, bins, walkways, handwash)
+- [x] Update backend LLM prompts to search for companies needing fencing specifically
+- [x] Update email templates to focus on fencing messaging
+- [x] Keep other services as future expansion option (not in current search)
+
+## Next Steps Features
+- [ ] Add Known Patterns database (save/edit company email patterns in Settings)
+- [ ] Add CSV Import tab to Find page (drag & drop Sales Navigator exports)
+- [ ] Add Scott's Directories API connector slot in Settings
