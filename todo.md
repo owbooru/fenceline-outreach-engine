@@ -128,3 +128,8 @@
 - [x] Human-pace sending queue with randomized 3-8 minute delays
 - [x] Reply detection and auto-pause on reply
 - [x] Wire Campaigns page "Send" button to actually deliver emails (frontend)
+
+## Next Steps - Phase 2
+- [x] Enroll Leads button on each campaign (select leads from Segment to assign to campaign)
+- [x] Sending schedule (Mon-Fri 8am-5pm MST only, no weekends/evenings)
+- [x] Gmail App Password setup instructions in Settings page

@@ -150,6 +150,48 @@ export async function sendEmail(options: {
 let sendingQueue: Array<{ leadId: number; campaignId: number; stepId: number; to: string; subject: string; html: string }> = [];
 let isSending = false;
 
+// ─── Business Hours Check (Mon-Fri 8am-5pm MST) ─────────────────────────────
+function isBusinessHours(): boolean {
+  // MST is UTC-7
+  const now = new Date();
+  const mstOffset = -7;
+  const utcHours = now.getUTCHours();
+  const mstHours = (utcHours + mstOffset + 24) % 24;
+  const day = now.getUTCDay(); // 0=Sun, 6=Sat
+
+  // Mon-Fri (1-5), 8am-5pm MST
+  if (day === 0 || day === 6) return false;
+  if (mstHours < 8 || mstHours >= 17) return false;
+  return true;
+}
+
+function getTimeUntilNextBusinessHour(): number {
+  // Returns ms until next Mon-Fri 8am MST
+  const now = new Date();
+  const mstOffset = -7;
+  const utcHours = now.getUTCHours();
+  const mstHours = (utcHours + mstOffset + 24) % 24;
+  const day = now.getUTCDay();
+
+  let hoursToWait = 0;
+
+  if (day === 6) { // Saturday
+    hoursToWait = (24 - mstHours) + 24 + 8; // Rest of Sat + all Sun + 8am Mon
+  } else if (day === 0) { // Sunday
+    hoursToWait = (24 - mstHours) + 8; // Rest of Sun + 8am Mon
+  } else if (mstHours >= 17) { // After 5pm weekday
+    if (day === 5) { // Friday after 5pm
+      hoursToWait = (24 - mstHours) + 48 + 8; // Rest of Fri + Sat + Sun + 8am Mon
+    } else {
+      hoursToWait = (24 - mstHours) + 8; // Rest of today + 8am tomorrow
+    }
+  } else if (mstHours < 8) { // Before 8am weekday
+    hoursToWait = 8 - mstHours;
+  }
+
+  return hoursToWait * 60 * 60 * 1000;
+}
+
 function getRandomDelay(): number {
   // 3-8 minutes in milliseconds
   return (Math.floor(Math.random() * 5) + 3) * 60 * 1000;
@@ -160,6 +202,15 @@ async function processQueue() {
   isSending = true;
 
   while (sendingQueue.length > 0) {
+    // Check business hours before each send
+    if (!isBusinessHours()) {
+      const waitTime = getTimeUntilNextBusinessHour();
+      console.log(`[EmailSender] Outside business hours (Mon-Fri 8am-5pm MST). Pausing queue for ${Math.round(waitTime / 3600000)} hours.`);
+      setTimeout(() => processQueue(), waitTime);
+      isSending = false;
+      return;
+    }
+
     const item = sendingQueue.shift()!;
     await sendEmail(item);
 
@@ -238,4 +289,3 @@ export async function sendCampaignStep(campaignId: number, stepId: number): Prom
 
   return { queued, skipped, errors };
 }
-

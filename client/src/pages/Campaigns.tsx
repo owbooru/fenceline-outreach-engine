@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, Send, CheckCircle, AlertCircle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Campaigns() {
@@ -11,10 +11,22 @@ export default function Campaigns() {
   const [showPreview, setShowPreview] = useState(false);
   const [previewTrack, setPreviewTrack] = useState("new_local");
   const [sendingCampaignId, setSendingCampaignId] = useState<number | null>(null);
+  const [enrollCampaignId, setEnrollCampaignId] = useState<number | null>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
 
   const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery();
+  const { data: allLeads } = trpc.leads.list.useQuery({});
   const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); } });
   const updateCampaign = trpc.campaigns.update.useMutation({ onSuccess: () => refetch() });
+  const enrollLeads = trpc.campaigns.enrollLeads.useMutation({
+    onSuccess: (data: any) => {
+      toast.success(`Enrolled ${data.enrolled} leads in campaign`);
+      setEnrollCampaignId(null);
+      setSelectedLeadIds([]);
+      refetch();
+    },
+    onError: (err: any) => toast.error(`Enroll failed: ${err.message}`),
+  });
   const emailStatus = (trpc as any).email?.status?.useQuery?.() || { data: null };
   const sendStep = (trpc as any).email?.sendStep?.useMutation?.({
     onSuccess: (data: any) => {
@@ -32,6 +44,24 @@ export default function Campaigns() {
     // For POC, send step 1 of the campaign
     setSendingCampaignId(campaignId);
     sendStep.mutate({ campaignId, stepId: 1 });
+  };
+
+  const handleEnroll = () => {
+    if (!enrollCampaignId || selectedLeadIds.length === 0) return;
+    enrollLeads.mutate({ campaignId: enrollCampaignId, leadIds: selectedLeadIds });
+  };
+
+  const toggleLeadSelection = (id: number) => {
+    setSelectedLeadIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const selectAllLeads = () => {
+    if (!allLeads) return;
+    if (selectedLeadIds.length === allLeads.length) {
+      setSelectedLeadIds([]);
+    } else {
+      setSelectedLeadIds(allLeads.map((l: any) => l.id));
+    }
   };
 
   const handleCreate = () => {
@@ -159,6 +189,13 @@ export default function Campaigns() {
                       {c.status === "active" ? "Pause" : "Activate"}
                     </button>
                     <button
+                      onClick={() => { setEnrollCampaignId(c.id); setSelectedLeadIds([]); }}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold border border-[#1a4750] text-[#1a4750] rounded-lg hover:bg-[#f4f7f6] transition-colors"
+                    >
+                      <UserPlus className="h-3 w-3" />
+                      Enroll Leads
+                    </button>
+                    <button
                       onClick={() => handleSend(c.id)}
                       disabled={!emailStatus.data?.configured || sendingCampaignId === c.id || c.status !== "active"}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold bg-[#1a4750] text-white rounded-lg hover:bg-[#2a5a65] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
@@ -230,6 +267,58 @@ export default function Campaigns() {
           </div>
         )}
       </div>
+
+      {/* Enroll Leads Modal */}
+      {enrollCampaignId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg max-h-[80vh] flex flex-col">
+            <div className="p-5 border-b border-[#eee]">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-[16px] font-bold text-[#1a4750]">Enroll Leads in Campaign</h3>
+                  <p className="text-[12px] text-[#888] mt-1">Select contacts to add to this outreach sequence</p>
+                </div>
+                <button onClick={() => setEnrollCampaignId(null)} className="text-[#888] hover:text-[#333] text-[20px]">&times;</button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              {!allLeads || allLeads.length === 0 ? (
+                <div className="text-center py-8 text-[#888]">
+                  <p className="text-[14px]">No leads in database yet.</p>
+                  <p className="text-[12px] mt-1">Import contacts from the Find page first.</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-3">
+                    <input type="checkbox" checked={selectedLeadIds.length === allLeads.length} onChange={selectAllLeads} className="w-4 h-4 accent-[#1a4750]" />
+                    <span className="text-[13px] font-semibold">Select All ({allLeads.length} contacts)</span>
+                    {selectedLeadIds.length > 0 && <span className="badge-green">{selectedLeadIds.length} selected</span>}
+                  </div>
+                  <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                    {allLeads.map((lead: any) => (
+                      <label key={lead.id} className="flex items-center gap-3 p-2.5 rounded-lg border border-[#eee] hover:border-[#ccc] cursor-pointer transition-colors">
+                        <input type="checkbox" checked={selectedLeadIds.includes(lead.id)} onChange={() => toggleLeadSelection(lead.id)} className="w-4 h-4 accent-[#1a4750]" />
+                        <div className="flex-1">
+                          <div className="text-[13px] font-semibold">{lead.firstName} {lead.lastName}</div>
+                          <div className="text-[11px] text-[#888]">{lead.company} · {lead.email || "No email"}</div>
+                        </div>
+                        <span className="text-[11px] text-[#aaa]">{lead.segment || "new"}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="p-4 border-t border-[#eee] flex justify-end gap-2">
+              <button onClick={() => setEnrollCampaignId(null)} className="px-4 py-2 text-[13px] font-semibold border border-[#ddd] rounded-lg">Cancel</button>
+              <button onClick={handleEnroll} disabled={selectedLeadIds.length === 0 || enrollLeads.isPending} className="inline-flex items-center gap-1 px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold disabled:opacity-50">
+                {enrollLeads.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
+                Enroll {selectedLeadIds.length} Lead{selectedLeadIds.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

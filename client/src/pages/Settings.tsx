@@ -7,6 +7,7 @@ export default function SettingsPage() {
   const [domainName, setDomainName] = useState("");
   const [showConnectorForm, setShowConnectorForm] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
+  const [showGmailGuide, setShowGmailGuide] = useState(false);
 
   const { data: domains, refetch: refetchDomains } = trpc.domains.list.useQuery();
   const createDomain = trpc.domains.create.useMutation({ onSuccess: () => { refetchDomains(); setShowDomainForm(false); setDomainName(""); } });
@@ -157,6 +158,32 @@ export default function SettingsPage() {
       {/* Outreach Sending */}
       <div className="mt-8">
         <div className="text-[12px] font-bold text-[#999] uppercase tracking-wider mb-3">Outreach Sending</div>
+        <button onClick={() => setShowGmailGuide(!showGmailGuide)} className="mb-3 px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold hover:bg-[#2a5a65] transition-colors">
+          {showGmailGuide ? "Hide" : "Show"} Gmail Setup Guide
+        </button>
+        {showGmailGuide && (
+          <div className="p-4 bg-[#f8f9fb] border border-[#e8e8ee] rounded-xl mb-4">
+            <h4 className="text-[14px] font-bold text-[#1a4750] mb-2">Gmail App Password Setup</h4>
+            <p className="text-[12px] text-[#666] mb-3">To send emails through Gmail, you need an App Password (not your regular Gmail password).</p>
+            <ol className="text-[12px] text-[#555] space-y-2 list-decimal list-inside">
+              <li>Go to <a href="https://myaccount.google.com/security" target="_blank" rel="noopener" className="text-[#1a4750] font-semibold hover:underline">Google Account Security</a></li>
+              <li>Enable <strong>2-Step Verification</strong> if not already on</li>
+              <li>Go to <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener" className="text-[#1a4750] font-semibold hover:underline">App Passwords</a></li>
+              <li>Create a new app password (name it "Fenceline Lead Engine")</li>
+              <li>Copy the 16-character password</li>
+            </ol>
+            <div className="mt-3 p-3 bg-white border border-[#ddd] rounded-lg">
+              <p className="text-[12px] font-semibold text-[#1a4750] mb-2">Environment variables for the server (.env file):</p>
+              <pre className="text-[11px] font-mono bg-[#1a1a2e] text-green-400 p-3 rounded-lg overflow-x-auto whitespace-pre">{`SMTP_HOST=smtp.gmail.com\nSMTP_PORT=587\nSMTP_USER=rob@outreach-fenceline.ca\nSMTP_PASS=xxxx xxxx xxxx xxxx\nSMTP_FROM_NAME=Rob McMullen\nSMTP_FROM_EMAIL=rob@outreach-fenceline.ca\nAPP_URL=https://fenceline.geekcertified.com`}</pre>
+            </div>
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p className="text-[12px] text-amber-800"><strong>Sending Schedule:</strong> Emails only send Mon-Fri 8am-5pm MST. Queued emails outside business hours wait until the next business morning.</p>
+            </div>
+            <div className="mt-2 p-3 bg-[#f4f7f6] border border-[#d4ddd8] rounded-lg">
+              <p className="text-[12px] text-[#555]"><strong>After setting env vars:</strong> Run <code className="bg-[#eee] px-1 rounded">pm2 restart lead-engine</code> on the server to apply.</p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-4">
           <ConnectorCard id="instantly" name="Instantly" desc="Cold outreach platform with inbox rotation, warm-up, and deliverability monitoring." cost="$47/mo" />
           <ConnectorCard id="gmail" name="Gmail API" desc="Send one-to-one personalized emails at human pace through Google Workspace." cost="Free w/ Google Workspace" />
