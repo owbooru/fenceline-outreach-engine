@@ -17,12 +17,12 @@ interface SearchResult {
 }
 
 const searchSources = [
-  { name: "Scott's Directories", count: "380+ contacts across 14 companies", delay: 800 },
-  { name: "Company websites scraped", count: "9 team pages found, 124 contacts", delay: 1600 },
-  { name: "LinkedIn profiles matched", count: "290 verified contacts matched", delay: 2200 },
-  { name: "MERX & procurement portals", count: "4 active tenders & permits", delay: 2800 },
-  { name: "Email patterns detected", count: "14 company patterns, 92% avg confidence", delay: 3400 },
-  { name: "Filtering by target roles", count: "178 decision-makers from 670+ raw contacts", delay: 3800 },
+  { name: "LinkedIn People Search", count: "Searching for matching profiles...", delay: 800 },
+  { name: "Alberta Purchasing Connection", count: "Scraping active fencing tenders...", delay: 1600 },
+  { name: "MERX Procurement Portal", count: "Checking open solicitations...", delay: 2200 },
+  { name: "City of Edmonton", count: "Checking municipal procurement...", delay: 2800 },
+  { name: "Email pattern detection", count: "Matching known company domains...", delay: 3400 },
+  { name: "Compiling results", count: "Filtering to verified contacts only...", delay: 3800 },
 ];
 
 export default function Find() {
@@ -39,6 +39,10 @@ export default function Find() {
   const [csvData, setCsvData] = useState<SearchResult[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
+  const [selectedResults, setSelectedResults] = useState<number[]>([]);
+  const toggleResult = (idx: number) => {
+    setSelectedResults(prev => prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]);
+  };
   const [patternCompany, setPatternCompany] = useState("");
   const [patternDomain, setPatternDomain] = useState("");
   const [patternFormat, setPatternFormat] = useState("first.last");
@@ -337,34 +341,21 @@ export default function Find() {
       )}
 
       {/* Tenders Card */}
-      {activeTab === "search" && showTenders && (
+      {activeTab === "search" && showTenders && results.length > 0 && (
         <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[16px]">📋</span>
-            <h3 className="text-[16px] font-bold">Tenders & Active Projects Found</h3>
-            <span className="badge-amber">4 found</span>
+            <h3 className="text-[16px] font-bold">Sources Checked</h3>
+            <span className="badge-amber">{results.length} contacts found</span>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
-              <div className="text-[12px] font-semibold text-[#8c7355] mb-1">📋 MERX — RFP</div>
-              <div className="text-[13px] font-semibold">City of Edmonton — Temporary Fencing, LRT Valley Line West</div>
-              <div className="text-[12px] text-[#888] mt-1">Posted Jun 16 · Closes Jul 4 · Est. 2,400 linear ft</div>
-            </div>
-            <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
-              <div className="text-[12px] font-semibold text-[#8c7355] mb-1">🏗️ Building Permit</div>
-              <div className="text-[13px] font-semibold">Windermere Mixed-Use — Perimeter & Construction Fencing</div>
-              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 12 · Edmonton · 340 units · GC: Qualico</div>
-            </div>
-            <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
-              <div className="text-[12px] font-semibold text-[#8c7355] mb-1">📋 Alberta Purchasing Connection</div>
-              <div className="text-[13px] font-semibold">Strathcona County — Security Fencing for Rec Centre Expansion</div>
-              <div className="text-[12px] text-[#888] mt-1">Posted Jun 14 · Closes Jun 28 · Chain link + temp construction fence</div>
-            </div>
-            <div className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
-              <div className="text-[12px] font-semibold text-[#8c7355] mb-1">🔨 Demolition Permit</div>
-              <div className="text-[13px] font-semibold">Old Strathcona Block Demolition — Construction Hoarding Required</div>
-              <div className="text-[12px] text-[#888] mt-1">Permit issued Jun 10 · Edmonton · Full perimeter hoarding + temp fence</div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {results.filter(r => r.source !== "System").map((r, i) => (
+              <div key={i} className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
+                <div className="text-[12px] font-semibold text-[#8c7355] mb-1">📋 {r.source}</div>
+                <div className="text-[13px] font-semibold">{r.company} — {r.role}</div>
+                <div className="text-[12px] text-[#888] mt-1">{r.serviceNeed?.slice(0, 80)}</div>
+              </div>
+            )).slice(0, 4)}
           </div>
         </div>
       )}
@@ -395,7 +386,12 @@ export default function Find() {
             <div className="space-y-2">
               {results.map((c, i) => (
                 <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-[#eee] result-row" style={{ animationDelay: `${i * 100}ms` }}>
-                  <div className="w-4 h-4 rounded border-2 border-[#ddd] shrink-0" />
+                  <input 
+                    type="checkbox" 
+                    checked={selectedResults.includes(i)}
+                    onChange={() => toggleResult(i)}
+                    className="w-4 h-4 rounded border-2 border-[#ddd] shrink-0 cursor-pointer accent-[#1a4750]" 
+                  />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-semibold">{c.name}</span>
