@@ -127,4 +127,4 @@
 - [x] Click tracking link wrapper endpoint
 - [x] Human-pace sending queue with randomized 3-8 minute delays
 - [x] Reply detection and auto-pause on reply
-- [ ] Wire Campaigns page "Send" button to actually deliver emails (frontend)
+- [x] Wire Campaigns page "Send" button to actually deliver emails (frontend)

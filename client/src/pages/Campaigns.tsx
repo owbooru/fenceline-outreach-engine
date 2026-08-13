@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Loader2 } from "lucide-react";
+import { Loader2, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Campaigns() {
@@ -10,10 +10,29 @@ export default function Campaigns() {
   const [description, setDescription] = useState("");
   const [showPreview, setShowPreview] = useState(false);
   const [previewTrack, setPreviewTrack] = useState("new_local");
+  const [sendingCampaignId, setSendingCampaignId] = useState<number | null>(null);
 
   const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery();
   const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); } });
   const updateCampaign = trpc.campaigns.update.useMutation({ onSuccess: () => refetch() });
+  const emailStatus = (trpc as any).email?.status?.useQuery?.() || { data: null };
+  const sendStep = (trpc as any).email?.sendStep?.useMutation?.({
+    onSuccess: (data: any) => {
+      toast.success(`Queued ${data.queued} emails for sending (${data.skipped} skipped). Sending at human pace — 3-8 min between each.`);
+      setSendingCampaignId(null);
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(`Send failed: ${err.message}`);
+      setSendingCampaignId(null);
+    }
+  }) || { mutate: () => toast.error("Email sending not available"), isPending: false };
+
+  const handleSend = (campaignId: number) => {
+    // For POC, send step 1 of the campaign
+    setSendingCampaignId(campaignId);
+    sendStep.mutate({ campaignId, stepId: 1 });
+  };
 
   const handleCreate = () => {
     if (!name) return;
@@ -32,8 +51,19 @@ export default function Campaigns() {
     <div>
       <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Campaigns</h1>
       <p className="text-[14px] text-[#777] mt-1.5">Launch and manage outreach sequences</p>
-      <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
+
+      {/* Email Status Indicator */}
+      <div className={`p-4 rounded-xl mt-5 mb-5 border ${emailStatus.data?.configured ? "bg-[#f4f7f6] border-[#d4ddd8]" : "bg-amber-50 border-amber-200"}`}>
+        <div className="flex items-center gap-2 mb-1">
+          {emailStatus.data?.configured ? (
+            <><CheckCircle className="h-4 w-4 text-green-600" /><span className="text-[13px] font-semibold text-green-800">Email sending configured</span></>
+          ) : (
+            <><AlertCircle className="h-4 w-4 text-amber-600" /><span className="text-[13px] font-semibold text-amber-800">Email sending not configured</span></>
+          )}
+          {emailStatus.data?.isSending && <span className="badge-green ml-2">Sending in progress ({emailStatus.data.queued} queued)</span>}
+        </div>
         <p className="text-[13px] text-[#444] leading-relaxed">Campaigns combine a segment, a template, and a sender profile into a scheduled outreach sequence. Emails are sent at human pace through an isolated outreach domain — your primary fenceline.ca is never used and never at risk.</p>
+        {!emailStatus.data?.configured && <p className="text-[12px] text-amber-700 mt-1">Set SMTP_HOST, SMTP_USER, SMTP_PASS environment variables on the server to enable sending.</p>}
       </div>
 
       {/* Protection Card */}
@@ -127,6 +157,14 @@ export default function Campaigns() {
                     <span className={c.status === "active" ? "badge-green" : c.status === "paused" ? "badge-amber" : "badge-gray"}>{c.status}</span>
                     <button onClick={() => toggleStatus(c.id, c.status)} className="px-3 py-1.5 text-[12px] font-semibold border border-[#ddd] rounded-lg hover:border-[#bbb] transition-colors">
                       {c.status === "active" ? "Pause" : "Activate"}
+                    </button>
+                    <button
+                      onClick={() => handleSend(c.id)}
+                      disabled={!emailStatus.data?.configured || sendingCampaignId === c.id || c.status !== "active"}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold bg-[#1a4750] text-white rounded-lg hover:bg-[#2a5a65] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {sendingCampaignId === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Send
                     </button>
                   </div>
                 </div>
