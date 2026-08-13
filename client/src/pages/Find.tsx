@@ -35,7 +35,7 @@ export default function Find() {
   const [showResults, setShowResults] = useState(false);
   const [showTenders, setShowTenders] = useState(false);
   const [currentSourceLabel, setCurrentSourceLabel] = useState("Searching sources...");
-  const [activeTab, setActiveTab] = useState<"search" | "csv">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "csv" | "tenders">("search");
   const [csvData, setCsvData] = useState<SearchResult[]>([]);
   const [csvFileName, setCsvFileName] = useState("");
   const [dragOver, setDragOver] = useState(false);
@@ -232,6 +232,7 @@ export default function Find() {
       <div className="flex gap-1 mt-5 mb-4 bg-[#f4f7f6] p-1 rounded-lg w-fit">
         <button onClick={() => setActiveTab("search")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "search" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>Search Sources</button>
         <button onClick={() => setActiveTab("csv")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "csv" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>CSV Import</button>
+        <button onClick={() => setActiveTab("tenders")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "tenders" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>Tenders &amp; RFPs</button>
       </div>
 
       {/* Info Box */}
@@ -428,6 +429,62 @@ export default function Find() {
               Showing {results.length} contacts · Click "Import All" to move them to Segment
           </div>
          )}
+        </div>
+      )}
+
+      {/* CSV Import Tab */}
+      {/* Tenders & RFPs Tab */}
+      {activeTab === "tenders" && (
+        <div className="mt-5">
+          <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mb-4">
+            <h3 className="text-[16px] font-bold text-[#1a4750] mb-2">Active Tenders & RFPs</h3>
+            <p className="text-[13px] text-[#888] mb-4">Government and municipal procurement opportunities for fencing and site services across Alberta. Sourced from Alberta Purchasing Connection, MERX, and municipal portals.</p>
+            <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 mb-4">
+              <span className="text-amber-600">⚠️</span>
+              <span className="text-[13px] text-amber-800 font-medium">Requires Chromium on the server for live scraping. Connect SerpAPI or MERX in Settings for automated monitoring.</span>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[14px]">📋</span>
+                  <span className="text-[13px] font-bold text-[#1a4750]">Alberta Purchasing Connection</span>
+                  <span className="badge-green">Free</span>
+                </div>
+                <p className="text-[12px] text-[#666] mb-2">Alberta government procurement portal. Publishes RFPs for fencing, construction hoarding, and site services.</p>
+                <a href="https://purchasing.alberta.ca" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+              </div>
+              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[14px]">📋</span>
+                  <span className="text-[13px] font-bold text-[#1a4750]">MERX</span>
+                  <span className="badge-amber">Subscription</span>
+                </div>
+                <p className="text-[12px] text-[#666] mb-2">National procurement platform. Government tenders and RFPs for construction, fencing, and infrastructure projects across Canada.</p>
+                <a href="https://www.merx.com" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse MERX →</a>
+              </div>
+              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[14px]">🏛️</span>
+                  <span className="text-[13px] font-bold text-[#1a4750]">City of Edmonton Procurement</span>
+                  <span className="badge-green">Free</span>
+                </div>
+                <p className="text-[12px] text-[#666] mb-2">Municipal procurement for infrastructure, parks, and construction projects requiring fencing and site services.</p>
+                <a href="https://www.edmonton.ca/programs_services/procurement" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+              </div>
+              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[14px]">🏛️</span>
+                  <span className="text-[13px] font-bold text-[#1a4750]">City of Calgary Procurement</span>
+                  <span className="badge-green">Free</span>
+                </div>
+                <p className="text-[12px] text-[#666] mb-2">Calgary municipal procurement for construction, transit, and infrastructure projects.</p>
+                <a href="https://www.calgary.ca/procurement" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-[#f4f7f6] border border-[#d4ddd8] rounded-lg">
+              <p className="text-[12px] text-[#555]"><strong>How it works:</strong> Once Chromium is installed on your server and SerpAPI or MERX is connected in Settings, the engine will automatically monitor these portals daily and surface new fencing-related tenders in the Search Sources tab results.</p>
+            </div>
+          </div>
         </div>
       )}
 

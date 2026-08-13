@@ -128,6 +128,13 @@ export default function Campaigns() {
                   </div>
                 </div>
                 {c.description && <div className="text-[13px] text-[#888] mt-2 ml-4">{c.description}</div>}
+                <div className="flex gap-6 mt-3 ml-4">
+                  <div><div className="text-[11px] font-semibold text-[#888]">Sent</div><div className="text-[16px] font-bold">{c.sentCount || 0}</div></div>
+                  <div><div className="text-[11px] font-semibold text-[#888]">Opened</div><div className="text-[16px] font-bold">{c.sentCount > 0 ? `${Math.round(((c.openCount || 0) / c.sentCount) * 100)}%` : "—"}</div></div>
+                  <div><div className="text-[11px] font-semibold text-[#888]">Replied</div><div className="text-[16px] font-bold">{c.replyCount || 0}</div></div>
+                  <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">{c.bounceCount || 0}</div></div>
+                  <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">10/day</div></div>
+                </div>
               </div>
             ))}
           </div>

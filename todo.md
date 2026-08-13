@@ -107,3 +107,10 @@
 - [x] Wire up Tracking page with real database-driven engagement stats
 - [x] Wire up Settings page with working connector API key forms and domain management
 - [x] Add working sender profile creation on Templates page
+
+## Demo Gap Fixes
+- [x] Tracking page: Add Hot Leads table with Follow Up buttons, intent badges, connected to engagement events (opens, clicks, replies)
+- [x] Settings page: Organize into proper sections (Domain Reputation, Contact Finding, Lead Sourcing, Email Verification, Outreach Sending, Tender Monitoring, CRM)
+- [x] Settings page: Add Gmail API, separate MERX/APC cards, ZeroBounce in own section
+- [x] Find page: Add separate Tenders & RFPs tab
+- [x] Campaigns page: Add per-campaign metrics (sent/opened/replied/bounced/pace)
