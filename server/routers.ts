@@ -192,6 +192,17 @@ export const appRouter = router({
     getLeads: publicProcedure
       .input(z.object({ campaignId: z.number() }))
       .query(({ input }) => db.getCampaignLeads(input.campaignId)),
+
+    unenrollLead: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new Error("Database not available");
+        const { campaignLeads } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await database.delete(campaignLeads).where(eq(campaignLeads.id, input.id));
+        return { success: true };
+      }),
   }),
 
   // ─── Sequence Steps ────────────────────────────────────────────────────────

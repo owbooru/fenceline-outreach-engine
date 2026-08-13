@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Send, CheckCircle, AlertCircle, UserPlus, ChevronDown, ChevronUp, Mail, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, Send, CheckCircle, AlertCircle, UserPlus, ChevronDown, ChevronUp, Mail, Clock, CheckCircle2, X, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export default function Campaigns() {
@@ -14,6 +14,8 @@ export default function Campaigns() {
   const [enrollCampaignId, setEnrollCampaignId] = useState<number | null>(null);
   const [selectedLeadIds, setSelectedLeadIds] = useState<number[]>([]);
   const [expandedCampaignId, setExpandedCampaignId] = useState<number | null>(null);
+  const [resendLeadId, setResendLeadId] = useState<number | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
 
   const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery();
   const { data: allLeads } = trpc.leads.list.useQuery({});
@@ -32,7 +34,26 @@ export default function Campaigns() {
     },
     onError: (err: any) => toast.error(`Enroll failed: ${err.message}`),
   });
+  const unenrollLead = trpc.campaigns.unenrollLead.useMutation({
+    onSuccess: () => { toast.success("Lead removed from campaign"); refetch(); },
+    onError: (err: any) => toast.error(`Remove failed: ${err.message}`),
+  });
+  const updateLead = trpc.leads.update.useMutation({
+    onSuccess: () => { toast.success("Email updated — lead re-queued for sending"); setResendLeadId(null); setResendEmail(""); },
+    onError: (err: any) => toast.error(`Update failed: ${err.message}`),
+  });
   const emailStatus = (trpc as any).email?.status?.useQuery?.() || { data: null };
+
+  const handleRemoveFromCampaign = (campaignLeadId: number) => {
+    if (confirm("Remove this lead from the campaign?")) {
+      unenrollLead.mutate({ id: campaignLeadId });
+    }
+  };
+
+  const handleResend = (leadId: number) => {
+    if (!resendEmail) return;
+    updateLead.mutate({ id: leadId, data: { email: resendEmail } });
+  };
   const sendStep = (trpc as any).email?.sendStep?.useMutation?.({
     onSuccess: (data: any) => {
       toast.success(`Queued ${data.queued} emails for sending (${data.skipped} skipped). Sending at human pace — 3-8 min between each.`);
@@ -185,7 +206,7 @@ export default function Campaigns() {
                     <div className="w-1 h-10 rounded" style={{ background: trackColors[c.track] || "#888" }} />
                     <div>
                       <div className="text-[15px] font-semibold">{c.name}</div>
-                      <div className="text-[13px] text-[#888] mt-0.5">Track: {trackLabels[c.track] || c.track} · Domain: {c.sendingDomain || "outreach-fenceline.ca"}</div>
+                      <div className="text-[13px] text-[#888] mt-0.5">Track: {trackLabels[c.track] || c.track} · Domain: {c.sendingDomain || "outreach-fenceline.ca"} · <span className="font-semibold text-[#555]">{c.enrolledCount || 0} enrolled</span>{(c.sentCount || 0) > 0 && <span className="text-green-600"> ({c.sentCount} contacted)</span>}</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -253,6 +274,14 @@ export default function Campaigns() {
                               <div className="flex items-center gap-2">
                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${statusColor}`}>{statusLabel}</span>
                                 {el.lastSentAt && <span className="text-[10px] text-[#aaa]">{new Date(el.lastSentAt).toLocaleDateString()}</span>}
+                                {el.status === "bounced" && (
+                                  <button onClick={() => { setResendLeadId(el.leadId); setResendEmail(lead?.email || ""); }} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 bg-blue-50 rounded hover:bg-blue-100 transition-colors">
+                                    <RefreshCw className="h-2.5 w-2.5" /> Resend
+                                  </button>
+                                )}
+                                <button onClick={() => handleRemoveFromCampaign(el.id)} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors">
+                                  <X className="h-2.5 w-2.5" /> Remove
+                                </button>
                               </div>
                             </div>
                           );
@@ -362,6 +391,23 @@ export default function Campaigns() {
               <button onClick={handleEnroll} disabled={selectedLeadIds.length === 0 || enrollLeads.isPending} className="inline-flex items-center gap-1 px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold disabled:opacity-50">
                 {enrollLeads.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <UserPlus className="h-3 w-3" />}
                 Enroll {selectedLeadIds.length} Lead{selectedLeadIds.length !== 1 ? "s" : ""}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resend Modal */}
+      {resendLeadId && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl w-full max-w-sm p-5">
+            <h3 className="text-[16px] font-bold text-[#1a4750] mb-2">Update Email & Resend</h3>
+            <p className="text-[12px] text-[#888] mb-3">The previous email bounced. Update the address and the lead will be re-queued for sending.</p>
+            <input value={resendEmail} onChange={e => setResendEmail(e.target.value)} placeholder="new.email@company.com" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] mb-3" />
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setResendLeadId(null)} className="px-4 py-2 text-[13px] font-semibold border border-[#ddd] rounded-lg">Cancel</button>
+              <button onClick={() => handleResend(resendLeadId)} disabled={!resendEmail || updateLead.isPending} className="px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold disabled:opacity-50">
+                {updateLead.isPending ? <Loader2 className="h-3 w-3 animate-spin inline mr-1" /> : null}Update & Resend
               </button>
             </div>
           </div>

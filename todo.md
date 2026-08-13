@@ -136,3 +136,8 @@
 
 ## Campaign Enrolled Leads Status
 - [x] Show enrolled leads list on each campaign with contacted/pending status indicator
+
+## Campaign Enhancements
+- [x] Remove from Campaign button on each enrolled lead
+- [x] Enrolled count in campaign card header (X enrolled, Y contacted, Z pending)
+- [x] Resend option for bounced leads with email update
