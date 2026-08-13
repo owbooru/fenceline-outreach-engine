@@ -49,3 +49,24 @@ sudo systemctl restart fenceline
 - Connector API keys (Hunter/Apollo/SerpAPI/Salesforce/…) are optional; add them in the app
   Settings page or `.env`. The app runs without them; those integrations stay inert.
 - `.env` is chmod 600 and gitignored — never commit it.
+
+## CI/CD — auto-deploy on new commits
+A systemd timer polls `origin/main` every 2 minutes and deploys new commits.
+
+- **Engine:** `deploy.sh` — fetch → merge `origin/main` → `pnpm install` → `pnpm db:push` →
+  `pnpm build` → restart → health-check `http://127.0.0.1:3003/`. Rolls back to the previous
+  commit if the build fails or the app doesn't return 200. On a merge conflict it aborts and
+  keeps the current build live (resolve manually, like any conflicting upstream push).
+- **Trigger:** `fenceline-deploy.timer` → `fenceline-deploy.service` (oneshot, runs as `dev`).
+  - Status: `systemctl list-timers fenceline-deploy.timer`
+  - Logs: `tail -f /opt/fenceline-deploy.log`
+  - Deploy now (don't wait for the poll): `sudo systemctl start fenceline-deploy.service`
+  - Pause/resume: `sudo systemctl {stop,start} fenceline-deploy.timer`
+- **Git auth (private repo):** repo-local `credential.helper` reads `GITHUB_TOKEN` from
+  `/opt/auth_info/.secret` at call time (no token stored in git config). Needed because the
+  systemd environment has no interactive credentials.
+- **Behavior to know:** this auto-deploys colleague pushes to `owbooru/main` within ~2 min
+  (rollback protects against a broken build). To gate deploys behind review instead, point the
+  deploy at a repo/branch you control and merge upstream deliberately.
+- **Upgrade to push-triggered (instant):** add a GitHub webhook or a self-hosted Actions runner
+  on a repo you admin, calling `deploy.sh`. The poll timer is the zero-setup equivalent.
