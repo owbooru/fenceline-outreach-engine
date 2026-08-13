@@ -6,6 +6,7 @@ import { z } from "zod";
 import * as db from "./db";
 import { searchWebForLeads } from "./webSearch";
 import { scrapeLinkedIn } from "./linkedinScraper";
+import { draftOutreachEmail } from "./emailDrafter";
 
 export const appRouter = router({
   system: systemRouter,
@@ -412,6 +413,20 @@ export const appRouter = router({
         const results = await scrapeLinkedIn(input);
         return { results };
       }),
+  }),
+
+  // ─── AI (email drafting) ─────────────────────────────────────────────────────
+  ai: router({
+    draftEmail: publicProcedure
+      .input(z.object({
+        track: z.enum(["existing_customers", "new_local", "new_national"]),
+        company: z.string().optional(),
+        contactName: z.string().optional(),
+        projectContext: z.string().optional(),
+        tone: z.string().optional(),
+        service: z.string().optional(),
+      }))
+      .mutation(({ input }) => draftOutreachEmail(input)),
   }),
 });
 

@@ -1,5 +1,4 @@
 import { callDataApi } from "./_core/dataApi";
-import { invokeLLM } from "./_core/llm";
 
 export interface LinkedInSearchResult {
   firstName: string;
@@ -144,88 +143,10 @@ export async function scrapeLinkedIn(params: LinkedInSearchParams): Promise<Link
     });
   }
 
-  // Fallback: use LLM to generate leads based on search criteria
-  const fallbackPrompt = `You are a LinkedIn lead extraction assistant for Fenceline, a fence sales company in Alberta, Canada.
-
-I'm looking for LinkedIn profiles matching these criteria:
-- Job titles: ${jobTitle}
-- Industry: ${industry}
-- Location: ${location} (THIS IS MANDATORY - all results MUST be in this location)
-- Company: ${company || "any"}
-- Keywords: ${keywords || "fence, construction"}
-
-Generate 8 realistic LinkedIn profiles of decision-makers (estimators, project managers, buyers, procurement managers) at companies in Alberta that would need fencing services.
-
-CRITICAL LOCATION RULES:
-- ALL profiles MUST be located in Alberta, Canada — specifically in or near ${location}
-- The "location" field for each profile MUST be an Alberta city (Edmonton, Calgary, Red Deer, Sherwood Park, St. Albert, Spruce Grove, Airdrie, Lethbridge, etc.)
-- NEVER generate profiles from other provinces, states, or countries (no Texas, no Ontario, no BC)
-- Use ONLY real Alberta-based companies: PCL Construction (Edmonton), Graham Construction (Calgary), City of Edmonton, City of Calgary, City of Red Deer, Jayman Built (Calgary), Clark Builders (Edmonton), Ledcor (Edmonton), Bird Construction (Edmonton), Qualico (Winnipeg/Edmonton), Stuart Olson (Calgary), EllisDon (Edmonton)
-
-For each profile provide:
-- The LinkedIn profile URL in format: https://www.linkedin.com/in/firstname-lastname-xxxxx/
-- A pattern-based email using firstname.lastname@companydomain.com (use real company domains like pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, jaymanbuilt.com, clarkbuilders.com, ledcor.com)
-- The location MUST be in Alberta (e.g., "Edmonton, Alberta", "Calgary, Alberta", "Red Deer, Alberta")`;
-
-  try {
-    const response = await invokeLLM({
-      messages: [
-        {
-          role: "system",
-          content: "You are a LinkedIn profile data generator. Return only valid JSON.",
-        },
-        { role: "user", content: fallbackPrompt },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "linkedin_profiles",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              profiles: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    firstName: { type: "string" },
-                    lastName: { type: "string" },
-                    jobTitle: { type: "string" },
-                    company: { type: "string" },
-                    location: { type: "string" },
-                    linkedinUrl: { type: "string" },
-                    email: { type: "string" },
-                    companyType: {
-                      type: "string",
-                      enum: ["municipality", "general_contractor", "home_builder", "civil", "other"],
-                    },
-                    region: {
-                      type: "string",
-                      enum: ["edmonton", "calgary", "red_deer", "other"],
-                    },
-                    summary: { type: "string" },
-                  },
-                  required: ["firstName", "lastName", "jobTitle", "company", "location", "linkedinUrl", "email", "companyType", "region", "summary"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["profiles"],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (typeof content === "string") {
-      const parsed = JSON.parse(content);
-      return parsed.profiles || [];
-    }
-    return [];
-  } catch (error) {
-    console.error("[LinkedIn Scraper] LLM fallback failed:", error);
-    return [];
-  }
+  // No real LinkedIn results. We intentionally do NOT fabricate profiles here.
+  // The real LinkedIn people-search ran through Manus's hosted Data API, which
+  // isn't available off-Manus — so rather than invent fake leads, we return an
+  // empty list and keep "Find" honest (real data only). Use the tender/web-search
+  // path or CSV import for real contacts.
+  return [];
 }

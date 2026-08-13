@@ -1,4 +1,3 @@
-import { callDataApi } from "./_core/dataApi";
 import axios from "axios";
 
 export interface WebSearchResult {
@@ -100,43 +99,12 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
   const results: WebSearchResult[] = [];
   console.log(`[WebSearch] Starting search: criteria=${params.criteria}, region=${params.region}, industry=${params.industry}`);
 
-  // Step 1: Try LinkedIn People Search API for real contacts
-  try {
-    const titleKeywords = "estimator OR buyer OR project manager OR procurement OR superintendent";
-    const apiResult = await callDataApi("LinkedIn/search_people", {
-      query: {
-        keywords: `fencing construction ${location}`,
-        keywordTitle: titleKeywords,
-        geo: location,
-        start: "0",
-      },
-    }) as any;
+  // NOTE: the LinkedIn people-search step was removed. It relied on Manus's
+  // hosted Data API (forge), which is not available off-Manus. "Find" now sources
+  // real leads purely from live scraping of the public tender/procurement portals
+  // below (Alberta Purchasing Connection, MERX, City of Edmonton) — no fake data.
 
-    const items = apiResult?.data?.items || apiResult?.data;
-    if (items && Array.isArray(items)) {
-      for (const p of items.slice(0, 8)) {
-        if (!p.name || !p.headline) continue;
-        const company = p.company || p.headline?.split(" at ")?.[1] || "";
-        if (!company) continue;
-        results.push({
-          name: p.name,
-          company,
-          role: p.headline?.split(" at ")?.[0] || p.title || "",
-          region: p.location || location,
-          email: "",
-          pattern: "Verify via Scott's or company website",
-          status: "LinkedIn Profile",
-          source: "LinkedIn",
-          serviceNeed: p.headline || "",
-        });
-      }
-    }
-  } catch (err) {
-    console.log("[WebSearch] LinkedIn API error:", (err as Error).message);
-  }
-  console.log(`[WebSearch] LinkedIn returned ${results.length} results`);
-
-  // Step 2: Scrape Alberta Purchasing Connection for REAL fencing tenders
+  // Step 1: Scrape Alberta Purchasing Connection for REAL fencing tenders
   try {
     console.log("[WebSearch] Scraping Alberta Purchasing Connection...");
     const html = await scrapeWithBrowser("https://purchasing.alberta.ca/search?npo=1");

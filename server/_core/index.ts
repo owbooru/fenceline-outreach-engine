@@ -58,8 +58,11 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  server.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}/`);
+  // Loopback by default: TLS terminates at Caddy in front and port 3003 is not
+  // opened in ufw, so never bind the plain-HTTP port to a public interface.
+  const host = process.env.HOST || "127.0.0.1";
+  server.listen(port, host, () => {
+    console.log(`Server running on http://${host}:${port}/`);
   });
 }
 
