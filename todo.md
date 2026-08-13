@@ -120,3 +120,11 @@
 - [x] CASL-compliant unsubscribe handling (opt-out link in templates, unsubscribe list, auto-respect)
 - [x] Email preview before sending (show personalized email for each contact)
 - [x] Activity log (timeline of all system actions — imports, sends, hot leads, campaign events)
+
+## Email Sending Integration
+- [x] Gmail API / SMTP email sending backend
+- [x] Open tracking pixel endpoint
+- [x] Click tracking link wrapper endpoint
+- [x] Human-pace sending queue with randomized 3-8 minute delays
+- [x] Reply detection and auto-pause on reply
+- [ ] Wire Campaigns page "Send" button to actually deliver emails (frontend)
