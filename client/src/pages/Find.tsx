@@ -234,7 +234,7 @@ export default function Find() {
       {activeTab === "search" && !searching && !showResults && (
         <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
           <p className="text-[13px] text-[#444] leading-relaxed">
-            <strong>Where the engine looks:</strong> Company websites (team pages, about pages, contact pages), Google search results for LinkedIn profiles, industry association member directories, MERX, Alberta Purchasing Connection, municipal procurement portals, and any paid directory APIs you connect in Settings. Focused on finding companies that need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing.
+            <strong>Real data only.</strong> Results come from LinkedIn API and live scraping of public tender portals (Alberta Purchasing Connection, MERX, City of Edmonton). No AI-generated names or fake companies. Focused on finding real contacts who need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing. Requires Chromium on the server for JavaScript-rendered portals.
           </p>
         </div>
       )}

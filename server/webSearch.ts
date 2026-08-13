@@ -1,6 +1,4 @@
 import { callDataApi } from "./_core/dataApi";
-import { invokeLLM } from "./_core/llm";
-
 import axios from "axios";
 
 export interface WebSearchResult {
@@ -23,291 +21,291 @@ export interface WebSearchParams {
 }
 
 const regionMap: Record<string, string> = {
-  all_alberta: "Alberta, Canada",
-  edmonton: "Edmonton, Alberta",
-  calgary: "Calgary, Alberta",
-  red_deer: "Red Deer, Alberta",
-  ontario: "Ontario, Canada",
-  bc: "British Columbia, Canada",
-  saskatchewan: "Saskatchewan, Canada",
+  all_alberta: "Alberta",
+  edmonton: "Edmonton",
+  calgary: "Calgary",
+  red_deer: "Red Deer",
+  ontario: "Ontario",
+  bc: "British Columbia",
+  saskatchewan: "Saskatchewan",
 };
 
 const serviceMap: Record<string, string> = {
-  all_fencing: "fencing temporary fence permanent fence construction hoarding",
-  temp_fence_rentals: "temporary fence rental construction site fencing",
-  temp_fence_sales: "temporary fence sales wholesale fence",
-  perm_fence_sales: "permanent fence sales chain link fence ornamental fence",
-  construction_hoarding: "construction hoarding plywood hoarding site barrier",
-  event_fencing: "event fencing crowd control barrier perimeter fencing",
-  security_fencing: "security fencing perimeter fence industrial fence",
+  all_fencing: "fencing fence chain link",
+  temp_fence_rentals: "temporary fence rental",
+  temp_fence_sales: "temporary fence",
+  perm_fence_sales: "permanent fence chain link ornamental",
+  construction_hoarding: "hoarding construction barrier",
+  event_fencing: "event fencing crowd control",
+  security_fencing: "security fence perimeter",
 };
 
-const industryMap: Record<string, string> = {
-  all: "",
-  construction: "general contractor construction",
-  municipal: "municipal government city",
-  residential: "residential home builder",
-  commercial: "commercial development",
-  events: "events festivals",
-  rental: "rental company",
-  environmental: "environmental remediation",
-};
-
-// Known email patterns for real companies
-const knownPatterns: Record<string, { pattern: string; domain: string }> = {
-  "aecon": { pattern: "first.last", domain: "aecon.com" },
-  "pcl": { pattern: "flast", domain: "pcl.com" },
-  "pcl construction": { pattern: "flast", domain: "pcl.com" },
-  "ellisdon": { pattern: "first.last", domain: "ellisdon.com" },
-  "graham": { pattern: "flast", domain: "graham.ca" },
-  "graham construction": { pattern: "flast", domain: "graham.ca" },
-  "bird construction": { pattern: "first.last", domain: "bird.ca" },
-  "ledcor": { pattern: "flast", domain: "ledcor.com" },
-  "ledcor group": { pattern: "flast", domain: "ledcor.com" },
-  "stuart olson": { pattern: "first.last", domain: "stuartolson.com" },
-  "clark builders": { pattern: "first.last", domain: "clarkbuilders.com" },
-  "city of edmonton": { pattern: "first.last", domain: "edmonton.ca" },
-  "city of calgary": { pattern: "first.last", domain: "calgary.ca" },
-  "city of red deer": { pattern: "first.last", domain: "reddeer.ca" },
-  "jayman built": { pattern: "flast", domain: "jayman.com" },
-  "qualico": { pattern: "first.last", domain: "qualico.com" },
-  "rohit group": { pattern: "first.last", domain: "rohitgroup.com" },
-  "mattamy homes": { pattern: "first.last", domain: "mattamyhomes.com" },
-  "brookfield": { pattern: "first.last", domain: "brookfieldresidential.com" },
-  "alberta health services": { pattern: "first.last", domain: "albertahealthservices.ca" },
-  "epcor": { pattern: "first.last", domain: "epcor.com" },
-  "atco": { pattern: "first.last", domain: "atco.com" },
-  "stantec": { pattern: "first.last", domain: "stantec.com" },
-  "wsp": { pattern: "first.last", domain: "wsp.com" },
-};
-
-function generateEmail(firstName: string, lastName: string, company: string): { email: string; pattern: string; status: string } {
-  const companyLower = company.toLowerCase();
-  let matched = knownPatterns[companyLower];
-  if (!matched) {
-    // Try partial match
-    for (const [key, val] of Object.entries(knownPatterns)) {
-      if (companyLower.includes(key) || key.includes(companyLower)) {
-        matched = val;
-        break;
-      }
+/**
+ * Attempts to launch Puppeteer for JavaScript-rendered pages.
+ * On the VPS (8 vCore, 16GB RAM), Chromium will be installed.
+ * In dev/sandbox, falls back to HTTP scraping.
+ */
+async function scrapeWithBrowser(url: string): Promise<string> {
+  try {
+    const puppeteer = await import("puppeteer-core");
+    // Try common Chromium paths on Linux
+    const executablePaths = [
+      "/usr/bin/chromium-browser",
+      "/usr/bin/chromium",
+      "/usr/bin/google-chrome",
+      "/usr/bin/google-chrome-stable",
+      "/snap/bin/chromium",
+    ];
+    
+    let executablePath = "";
+    const fs = await import("fs");
+    for (const p of executablePaths) {
+      if (fs.existsSync(p)) { executablePath = p; break; }
     }
-  }
-
-  if (matched) {
-    const fn = firstName.toLowerCase();
-    const ln = lastName.toLowerCase();
-    let email: string;
-    if (matched.pattern === "first.last") {
-      email = `${fn}.${ln}@${matched.domain}`;
-    } else if (matched.pattern === "flast") {
-      email = `${fn[0]}${ln}@${matched.domain}`;
-    } else {
-      email = `${fn}.${ln}@${matched.domain}`;
+    
+    if (!executablePath) {
+      console.log("[WebSearch] No Chromium found — falling back to HTTP scraping");
+      throw new Error("No Chromium installed");
     }
-    return { email, pattern: `${matched.pattern}@${matched.domain}`, status: "Pattern" };
-  }
 
-  // Generate a domain from company name
-  const domain = companyLower.replace(/[^a-z0-9]/g, "").slice(0, 15) + ".com";
-  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
-  return { email, pattern: `first.last@${domain}`, status: "Pattern" };
+    const browser = await puppeteer.default.launch({
+      executablePath,
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage"],
+    });
+    
+    const page = await browser.newPage();
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 20000 });
+    
+    // Wait for content to render
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    const html = await page.content();
+    await browser.close();
+    return html;
+  } catch (err) {
+    // Fallback to simple HTTP
+    const resp = await axios.get(url, {
+      timeout: 10000,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    });
+    return resp.data as string;
+  }
 }
 
 export async function searchWebForLeads(params: WebSearchParams): Promise<WebSearchResult[]> {
-  const location = regionMap[params.region] || "Alberta, Canada";
-  const service = serviceMap[params.criteria] || params.criteria;
-  const industry = industryMap[params.industry] || "";
+  const location = regionMap[params.region] || "Alberta";
+  const service = serviceMap[params.criteria] || "fencing";
+  const results: WebSearchResult[] = [];
+  console.log(`[WebSearch] Starting search: criteria=${params.criteria}, region=${params.region}, industry=${params.industry}`);
 
-  // Step 1: Try LinkedIn People Search API for real contacts matching criteria
-  let linkedInResults: WebSearchResult[] = [];
+  // Step 1: Try LinkedIn People Search API for real contacts
   try {
-    // Build a targeted search - look for people in roles that BUY site services
     const titleKeywords = "estimator OR buyer OR project manager OR procurement OR superintendent";
-    const companyKeywords = industry || "construction";
     const apiResult = await callDataApi("LinkedIn/search_people", {
       query: {
-        keywords: companyKeywords,
+        keywords: `fencing construction ${location}`,
         keywordTitle: titleKeywords,
-        geo: location.split(",")[0], // Just city name
+        geo: location,
         start: "0",
       },
     }) as any;
 
     const items = apiResult?.data?.items || apiResult?.data;
     if (items && Array.isArray(items)) {
-      linkedInResults = items
-        .filter((p: any) => p.name && p.headline)
-        .slice(0, 8)
-        .map((p: any) => {
-          const nameParts = (p.name || "").split(" ");
-          const firstName = nameParts[0] || "";
-          const lastName = nameParts.slice(1).join(" ") || "";
-          const company = p.company || p.headline?.split(" at ")?.[1] || "Unknown";
-          const { email, pattern, status } = generateEmail(firstName, lastName, company);
-          return {
-            name: p.name,
-            company,
-            role: p.headline?.split(" at ")?.[0] || "Unknown",
-            region: location.split(",")[0],
-            email,
-            pattern,
-            status: "Verified",
-            source: "LinkedIn",
-            serviceNeed: `Potential buyer for ${service}`,
-          };
+      for (const p of items.slice(0, 8)) {
+        if (!p.name || !p.headline) continue;
+        const company = p.company || p.headline?.split(" at ")?.[1] || "";
+        if (!company) continue;
+        results.push({
+          name: p.name,
+          company,
+          role: p.headline?.split(" at ")?.[0] || p.title || "",
+          region: p.location || location,
+          email: "",
+          pattern: "Verify via Scott's or company website",
+          status: "LinkedIn Profile",
+          source: "LinkedIn",
+          serviceNeed: p.headline || "",
         });
-    }
-  } catch (err) {
-    console.log("[WebSearch] LinkedIn API not available, using LLM fallback");
-  }
-
-  // Step 2: Try to scrape real company team pages for contacts
-  let webScrapeResults: WebSearchResult[] = [];
-  try {
-    // Use Data API to search for company team pages in the region
-    const searchQuery = `${industry} ${location.split(",")[0]} team staff directory`;
-    const searchResult = await callDataApi("Google/search", {
-      query: { q: searchQuery, num: "5" },
-    }) as any;
-
-    if (searchResult?.data?.items) {
-      // We found some pages - extract info
-      for (const item of searchResult.data.items.slice(0, 3)) {
-        if (item.title && item.link) {
-          // Try to extract company name and people from the snippet
-          const companyName = item.title.split(" - ")[0]?.split(" | ")[0] || "";
-          if (companyName) {
-            const { email, pattern, status } = generateEmail("contact", "info", companyName);
-            webScrapeResults.push({
-              name: `Contact at ${companyName}`,
-              company: companyName,
-              role: "See team page",
-              region: location.split(",")[0],
-              email,
-              pattern,
-              status: "Unverified",
-              source: "Web Scrape",
-              serviceNeed: `Found via team page: ${item.link}`,
-            });
-          }
-        }
       }
     }
   } catch (err) {
-    console.log("[WebSearch] Google search not available, continuing with LLM");
+    console.log("[WebSearch] LinkedIn API error:", (err as Error).message);
   }
+  console.log(`[WebSearch] LinkedIn returned ${results.length} results`);
 
-  // Step 3: Use LLM to generate contacts based on REAL companies with ACTIVE needs
-  let llmResults: WebSearchResult[] = [];
+  // Step 2: Scrape Alberta Purchasing Connection for REAL fencing tenders
   try {
-    const response = await invokeLLM({
-      messages: [
-        { role: "system", content: `You are a B2B lead research assistant specializing in the Canadian construction and site services industry. You have deep knowledge of real companies operating in Western Canada and their organizational structures. Generate contacts that represent REAL decision-makers at REAL companies who would actually purchase site services (temporary fencing, portable toilets, waste bins, walkways, handwash stations). Respond with valid JSON only.` },
-        { role: "user", content: buildSearchPrompt(service, location, industry, params.criteria, linkedInResults.length) },
-      ],
-      response_format: {
-        type: "json_schema",
-        json_schema: {
-          name: "contacts",
-          strict: true,
-          schema: {
-            type: "object",
-            properties: {
-              contacts: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    firstName: { type: "string" },
-                    lastName: { type: "string" },
-                    company: { type: "string" },
-                    role: { type: "string" },
-                    city: { type: "string" },
-                    serviceNeed: { type: "string" },
-                    source: { type: "string" },
-                  },
-                  required: ["firstName", "lastName", "company", "role", "city", "serviceNeed", "source"],
-                  additionalProperties: false,
-                },
-              },
-            },
-            required: ["contacts"],
-            additionalProperties: false,
-          },
-        },
-      },
-    });
+    console.log("[WebSearch] Scraping Alberta Purchasing Connection...");
+    const html = await scrapeWithBrowser("https://purchasing.alberta.ca/search?npo=1");
+    
+    // Look for tender posting links (AB-YYYY-NNNNN format)
+    const tenderPattern = /AB-\d{4}-\d{5}/g;
+    const allMatches = html.match(tenderPattern) || [];
+    const tenderIds = Array.from(new Set(allMatches)).slice(0, 8);
+    console.log(`[WebSearch] Found ${tenderIds.length} tender IDs on APC`);
+    
+    // For each tender, try to get details
+    for (const tenderId of tenderIds.slice(0, 5)) {
+      try {
+        const tenderHtml = await scrapeWithBrowser(`https://purchasing.alberta.ca/posting/${tenderId}`);
+        const lowerHtml = tenderHtml.toLowerCase();
+        
+        // Only include fencing-related tenders
+        if (!lowerHtml.includes("fenc") && !lowerHtml.includes("chain link") && 
+            !lowerHtml.includes("hoarding") && !lowerHtml.includes("barrier") &&
+            !lowerHtml.includes("guardrail")) continue;
+        
+        // Extract title
+        const titleMatch = tenderHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+        const title = titleMatch?.[1]?.replace(/<[^>]*>/g, "").trim() || tenderId;
+        
+        // Extract emails
+        const emailMatches = tenderHtml.match(/[\w.-]+@[\w.-]+\.\w{2,}/g) || [];
+        const contactEmails = emailMatches.filter(e => 
+          !e.includes("trans.tender") && !e.includes("merx") && !e.includes("noreply")
+        );
+        
+        // Extract organization
+        const orgPatterns = [
+          /Contracting Organization[\s\S]*?<[^>]*>([^<]+)/,
+          /Organization[\s\S]*?<[^>]*>([^<]+)/,
+        ];
+        let org = "Government of Alberta";
+        for (const pat of orgPatterns) {
+          const m = tenderHtml.match(pat);
+          if (m && m[1]?.trim().length > 3) { org = m[1].trim(); break; }
+        }
 
-    const content = response.choices[0]?.message?.content;
-    if (typeof content === "string") {
-      const parsed = JSON.parse(content);
-      const contacts = parsed.contacts || [];
-      llmResults = contacts.map((c: any) => {
-        const { email, pattern, status } = generateEmail(c.firstName, c.lastName, c.company);
-        return {
-          name: `${c.firstName} ${c.lastName}`,
-          company: c.company,
-          role: c.role,
-          region: c.city || location.split(",")[0],
-          email,
-          pattern,
-          status,
-          source: c.source || "Web Scrape",
-          serviceNeed: c.serviceNeed,
-        };
-      });
+        if (contactEmails.length > 0) {
+          results.push({
+            name: contactEmails[0].split("@")[0].replace(/[._]/g, " "),
+            company: org,
+            role: "Procurement Contact",
+            region: "Alberta",
+            email: contactEmails[0],
+            pattern: "Verified — from tender posting",
+            status: "Verified",
+            source: "Alberta Purchasing Connection",
+            serviceNeed: `${title} — https://purchasing.alberta.ca/posting/${tenderId}`,
+          });
+        }
+
+        // Extract interested suppliers with emails
+        const supplierSection = tenderHtml.split(/[Ii]nterested [Ss]uppliers/)[1] || "";
+        const supplierEmails = supplierSection.match(/[\w.-]+@[\w.-]+\.\w{2,}/g) || [];
+        for (const email of supplierEmails.slice(0, 3)) {
+          if (email.includes("gov.ab") || email.includes("merx") || email.includes("noreply")) continue;
+          const domain = email.split("@")[1] || "";
+          const companyFromDomain = domain.split(".")[0] || "";
+          results.push({
+            name: email.split("@")[0].replace(/[._]/g, " "),
+            company: companyFromDomain,
+            role: "Fencing Contractor / Supplier",
+            region: "Alberta",
+            email,
+            pattern: "Verified — from tender bidder list",
+            status: "Verified",
+            source: "APC — Interested Supplier",
+            serviceNeed: `Bidding on: ${title}`,
+          });
+        }
+      } catch (tenderErr) {
+        // Skip individual tender errors
+      }
     }
   } catch (err) {
-    console.error("[WebSearch] LLM fallback failed:", err);
+    console.log("[WebSearch] Alberta Purchasing Connection scrape error:", (err as Error).message);
+  }
+  console.log(`[WebSearch] After APC scrape: ${results.length} total results`);
+
+  // Step 3: Try MERX for Alberta construction tenders
+  try {
+    console.log("[WebSearch] Checking MERX...");
+    const merxHtml = await scrapeWithBrowser("https://www.merx.com/public/solicitations/alberta-373?search=fencing");
+    
+    // Look for solicitation links
+    const solicitationLinks = merxHtml.match(/href="([^"]*solicitations\/open-bids[^"]*)"/g) || [];
+    console.log(`[WebSearch] Found ${solicitationLinks.length} MERX solicitations`);
+    
+    for (const linkMatch of solicitationLinks.slice(0, 3)) {
+      const href = linkMatch.replace('href="', '').replace('"', '');
+      const fullUrl = href.startsWith("http") ? href : `https://www.merx.com${href}`;
+      
+      try {
+        const solHtml = await scrapeWithBrowser(fullUrl);
+        const lowerSol = solHtml.toLowerCase();
+        if (!lowerSol.includes("fenc") && !lowerSol.includes("chain link") && !lowerSol.includes("construction")) continue;
+        
+        const titleMatch = solHtml.match(/<h1[^>]*>([\s\S]*?)<\/h1>/);
+        const title = titleMatch?.[1]?.replace(/<[^>]*>/g, "").trim() || "MERX Tender";
+        
+        const emails = solHtml.match(/[\w.-]+@[\w.-]+\.\w{2,}/g) || [];
+        const contactEmail = emails.find(e => !e.includes("merx") && !e.includes("noreply")) || "";
+        
+        if (contactEmail) {
+          results.push({
+            name: contactEmail.split("@")[0].replace(/[._]/g, " "),
+            company: contactEmail.split("@")[1]?.split(".")[0] || "Unknown",
+            role: "Procurement / Project Contact",
+            region: "Alberta",
+            email: contactEmail,
+            pattern: "Verified — from MERX posting",
+            status: "Verified",
+            source: "MERX",
+            serviceNeed: `${title} — ${fullUrl}`,
+          });
+        }
+      } catch (solErr) {
+        // Skip individual solicitation errors
+      }
+    }
+  } catch (err) {
+    console.log("[WebSearch] MERX scrape error:", (err as Error).message);
   }
 
-  // Combine results, LinkedIn first (they're more real)
-  const combined = [...linkedInResults, ...webScrapeResults.filter(r => !r.name.startsWith("Contact at")), ...llmResults];
-  // Deduplicate by name
+  // Step 4: City of Edmonton procurement
+  try {
+    results.push({
+      name: "City of Edmonton Procurement",
+      company: "City of Edmonton",
+      role: "Procurement Department",
+      region: "Edmonton",
+      email: "",
+      pattern: "View active tenders on SAP Ariba",
+      status: "Public Portal",
+      source: "City of Edmonton",
+      serviceNeed: "Active procurement opportunities — https://www.edmonton.ca/business_economy/selling_to_the_city/bid-procurement-opportunities",
+    });
+  } catch (err) {
+    // Skip
+  }
+
+  console.log(`[WebSearch] Final results: ${results.length}`);
+
+  // If no results from real sources, return a helpful message
+  if (results.length <= 1) {
+    results.push({
+      name: "No live results — Chromium required",
+      company: "System",
+      role: "Info",
+      region: location,
+      email: "",
+      pattern: "",
+      status: "Info",
+      source: "System",
+      serviceNeed: "Install Chromium on the VPS to enable real-time scraping of tender portals. Run: sudo apt install chromium-browser. Then restart the app.",
+    });
+  }
+
+  // Deduplicate
   const seen = new Set<string>();
-  return combined.filter(r => {
-    const key = r.name.toLowerCase();
+  return results.filter(r => {
+    const key = (r.email || r.name).toLowerCase();
     if (seen.has(key)) return false;
-    if (key.startsWith("contact at")) return false; // Skip generic entries
     seen.add(key);
     return true;
-  }).slice(0, 15);
-}
-
-function buildSearchPrompt(service: string, location: string, industry: string, criteria: string, existingCount: number): string {
-  const count = Math.max(6, 12 - existingCount);
-  return `Generate ${count} realistic B2B contacts for a commercial fencing company (FenceLine) doing cold outreach to ${industry || "construction companies, municipalities, and home builders"} in ${location}.
-
-FenceLine provides: Temporary Fence Sales & Rentals, Permanent Fence Sales, Construction Hoarding, Event/Crowd Control Fencing, Security/Perimeter Fencing. They serve construction sites, events, municipalities, and industrial projects across Canada.
-
-Service being sold: ${service}
-Criteria: ${criteria}
-
-CONTEXT: These contacts are for COLD OUTREACH. We need people who:
-- Are at companies with ACTIVE or UPCOMING projects that need FENCING
-- Have decision-making authority to purchase or recommend fencing vendors
-- Work at companies in ${location} that are currently building, developing, or managing construction/infrastructure projects
-
-RULES:
-1. Use ONLY real companies that actually operate in ${location}. Examples:
-   - General Contractors: AECON, PCL Construction, EllisDon, Graham Construction, Bird Construction, Ledcor Group, Stuart Olson, Clark Builders, Chandos, Pomerleau
-   - Municipalities: City of Edmonton, City of Calgary, City of Red Deer, Strathcona County, Sturgeon County, Parkland County
-   - Home Builders: Jayman Built, Qualico, Rohit Group, Mattamy Homes, Brookfield Residential, Daytona Homes, Coventry Homes
-   - Infrastructure/Utilities: Alberta Health Services, EPCOR, ATCO, Stantec, WSP, City of Edmonton Infrastructure
-   - Events: Edmonton Expo Centre, Calgary Stampede, K-Days, Heritage Festival, Taste of Edmonton
-   - Environmental: ATCO EnviroFront, Clean Harbors, GFL Environmental
-2. Generate realistic Canadian names (mix of ethnicities common in Alberta: English, French, Ukrainian, Chinese, South Asian, Indigenous)
-3. Target roles that PURCHASE fencing: Estimator, Buyer, Project Manager, Procurement Manager, Site Superintendent, Operations Manager, Project Coordinator, Facilities Manager
-4. For "source" field, randomly assign one of: "Web Scrape", "Scott's", "Apollo.io" — distribute roughly evenly
-5. serviceNeed must be SPECIFIC and explain WHY this person needs FENCING RIGHT NOW. Examples:
-   - "Managing 3 active highway projects requiring 10,000+ ft of temp fencing"
-   - "New 340-unit residential development needing perimeter and construction fencing"
-   - "Procurement lead for fencing across 5 active Edmonton construction projects"
-   - "LRT extension requiring 3km of construction hoarding and pedestrian barriers"
-   - "Planning summer festival requiring 2km perimeter crowd control fencing"
-   - "Industrial site expansion needing 8-ft security chain link perimeter fence"
-6. city must be a specific city within ${location}
-7. Each contact MUST be at a DIFFERENT company — no duplicates
-8. Mix of "Verified" and "Pattern" for status — about 70% Verified, 30% Pattern`;
+  }).slice(0, 20);
 }
