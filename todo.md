@@ -114,3 +114,9 @@
 - [x] Settings page: Add Gmail API, separate MERX/APC cards, ZeroBounce in own section
 - [x] Find page: Add separate Tenders & RFPs tab
 - [x] Campaigns page: Add per-campaign metrics (sent/opened/replied/bounced/pace)
+
+## POC Priority Features
+- [x] Duplicate detection on lead import (check by email or name+company before creating)
+- [x] CASL-compliant unsubscribe handling (opt-out link in templates, unsubscribe list, auto-respect)
+- [x] Email preview before sending (show personalized email for each contact)
+- [x] Activity log (timeline of all system actions — imports, sends, hot leads, campaign events)

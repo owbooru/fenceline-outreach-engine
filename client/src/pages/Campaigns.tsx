@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function Campaigns() {
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [track, setTrack] = useState("existing_customers");
   const [description, setDescription] = useState("");
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewTrack, setPreviewTrack] = useState("new_local");
 
   const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery();
   const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); } });
@@ -137,6 +140,55 @@ export default function Campaigns() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Email Preview */}
+      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
+        <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">Email Preview</h3>
+        <p className="text-[13px] text-[#888] mb-4">See exactly what the personalized email will look like before it goes out</p>
+        <div className="flex gap-3 mb-4">
+          {["existing_customers", "new_local", "new_national"].map(t => (
+            <button key={t} onClick={() => { setPreviewTrack(t); setShowPreview(true); }} className={`px-4 py-2 rounded-lg text-[13px] font-semibold transition-colors ${previewTrack === t && showPreview ? "bg-[#1a4750] text-white" : "bg-[#f4f7f6] text-[#444] hover:bg-[#e8f0f0]"}`}>
+              {t === "existing_customers" ? "Existing Customer" : t === "new_local" ? "New Local" : "New National"}
+            </button>
+          ))}
+        </div>
+        {showPreview && (
+          <div className="border border-[#e8e8ee] rounded-xl overflow-hidden">
+            <div className="bg-[#f8f9fb] px-5 py-3 border-b border-[#e8e8ee] flex justify-between items-center">
+              <div className="text-[13px] font-semibold text-[#666]">Preview — {previewTrack === "existing_customers" ? "Existing Customer" : previewTrack === "new_local" ? "New Local" : "New National"} Track</div>
+              <div className="text-[11px] text-[#aaa]">Personalized for: Sarah Chen, PCL Construction</div>
+            </div>
+            <div className="p-5">
+              <div className="mb-3">
+                <span className="text-[11px] font-semibold text-[#888]">From:</span>
+                <span className="text-[13px] ml-2">Rob McMullen &lt;rob@outreach-fenceline.ca&gt;</span>
+              </div>
+              <div className="mb-3">
+                <span className="text-[11px] font-semibold text-[#888]">To:</span>
+                <span className="text-[13px] ml-2">sarah.chen@pcl.com</span>
+              </div>
+              <div className="mb-4">
+                <span className="text-[11px] font-semibold text-[#888]">Subject:</span>
+                <span className="text-[13px] ml-2 font-semibold">
+                  {previewTrack === "existing_customers" ? "FenceLine pricing for PCL Construction fence purchases" : previewTrack === "new_local" ? "PCL Construction + FenceLine — fencing for your projects" : "Competitive fence pricing for Alberta projects"}
+                </span>
+              </div>
+              <div className="border-t border-[#eee] pt-4">
+                <div className="text-[13px] text-[#444] leading-relaxed whitespace-pre-line">
+                  {previewTrack === "existing_customers"
+                    ? "Hi Sarah,\n\nI wanted to make sure you received FenceLine's pricing specifically for PCL Construction. We've worked together on rentals, and I wanted to let you know we now offer wholesale fence sales as well — temp fence, chain link, ornamental, and construction hoarding.\n\nHappy to send over a quote if you have anything coming up.\n\nCheers,\nRob McMullen\nFenceLine | Fence Sales"
+                    : previewTrack === "new_local"
+                    ? "Hi Sarah,\n\nI noticed PCL Construction has projects underway in Edmonton. Whether you're looking at temporary construction fencing, permanent perimeter fence, or hoarding panels — we supply and install across Alberta.\n\nWould it be worth a quick conversation about your fencing needs?\n\nCheers,\nRob McMullen\nFenceLine | Fence Sales"
+                    : "Hi Sarah,\n\nI know you're managing projects in Alberta. Our fence pricing is competitive nationally — temp fence, chain link, security fencing, and construction hoarding shipped anywhere in Canada.\n\nIf you've got projects coming up that need fencing, I'd be happy to put together a quote.\n\nCheers,\nRob McMullen\nFenceLine | Fence Sales"}
+                </div>
+                <div className="mt-4 pt-3 border-t border-[#eee]">
+                  <p className="text-[11px] text-[#aaa] italic">This email was sent by FenceLine (outreach-fenceline.ca) regarding fencing services. If you no longer wish to receive these emails, <span className="underline">click here to unsubscribe</span>. FenceLine, Edmonton, AB, Canada.</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -11,6 +11,8 @@ import {
   sendingDomains, InsertSendingDomain,
   rolloutMilestones, InsertRolloutMilestone,
   integrationConfigs, InsertIntegrationConfig,
+  activityLog, InsertActivityLogEntry,
+  unsubscribes, InsertUnsubscribe,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -95,7 +97,25 @@ export async function createLeadsBulk(leadsData: InsertLead[]) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   if (leadsData.length === 0) return;
-  await db.insert(leads).values(leadsData);
+  // Duplicate detection: check existing emails and name+company combos
+  const existing = await db.select({ email: leads.email, firstName: leads.firstName, lastName: leads.lastName, company: leads.company }).from(leads);
+  const existingEmails = new Set(existing.filter(e => e.email).map(e => e.email!.toLowerCase()));
+  const existingNameCompany = new Set(existing.map(e => `${(e.firstName || "").toLowerCase()}|${(e.lastName || "").toLowerCase()}|${(e.company || "").toLowerCase()}`));
+
+  const newLeads = leadsData.filter(lead => {
+    if (lead.email && existingEmails.has(lead.email.toLowerCase())) return false;
+    const key = `${(lead.firstName || "").toLowerCase()}|${(lead.lastName || "").toLowerCase()}|${(lead.company || "").toLowerCase()}`;
+    if (existingNameCompany.has(key)) return false;
+    return true;
+  });
+
+  const duplicateCount = leadsData.length - newLeads.length;
+  if (newLeads.length > 0) {
+    await db.insert(leads).values(newLeads);
+  }
+  // Log the import activity
+  await logActivity("leads_imported", `Imported ${newLeads.length} contacts${duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : ""}`, { total: leadsData.length, imported: newLeads.length, duplicates: duplicateCount });
+  return { imported: newLeads.length, duplicates: duplicateCount };
 }
 
 export async function updateLead(id: number, data: Partial<InsertLead>) {
@@ -302,4 +322,38 @@ export async function upsertIntegrationConfig(provider: string, configData: Reco
   } else {
     await db.insert(integrationConfigs).values({ provider: provider as any, configData, isActive });
   }
+}
+
+// ─── Activity Log ────────────────────────────────────────────────────────────
+export async function logActivity(action: string, description: string, metadata?: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(activityLog).values({ action, description, metadata });
+}
+
+export async function getActivityLog(limit = 50) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(activityLog).orderBy(desc(activityLog.createdAt)).limit(limit);
+}
+
+// ─── Unsubscribes ────────────────────────────────────────────────────────────
+export async function addUnsubscribe(email: string, leadId?: number, reason?: string) {
+  const db = await getDb();
+  if (!db) return;
+  await db.insert(unsubscribes).values({ email: email.toLowerCase(), leadId, reason }).onDuplicateKeyUpdate({ set: { reason } });
+  await logActivity("unsubscribe", `${email} unsubscribed${reason ? `: ${reason}` : ""}`, { email, leadId });
+}
+
+export async function getUnsubscribes() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(unsubscribes).orderBy(desc(unsubscribes.unsubscribedAt));
+}
+
+export async function isUnsubscribed(email: string): Promise<boolean> {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select().from(unsubscribes).where(eq(unsubscribes.email, email.toLowerCase())).limit(1);
+  return result.length > 0;
 }

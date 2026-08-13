@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { toast } from "sonner";
 
 export default function Templates() {
   const [profiles, setProfiles] = useState<{name: string; initials: string; email: string; role: string; tone: string}[]>([
@@ -126,6 +128,66 @@ export default function Templates() {
           )}
         </div>
       </div>
+
+      {/* CASL Compliance */}
+      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
+        <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">CASL Compliance</h3>
+        <p className="text-[13px] text-[#888] mb-4">Every outreach email automatically includes an unsubscribe mechanism as required by Canadian Anti-Spam Legislation</p>
+        <div className="p-4 bg-[#f4f7f5] border border-[#c4d8cc] rounded-lg mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3d6b50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            <span className="text-[13px] font-semibold text-[#2d5a4e]">Auto-appended to every email</span>
+          </div>
+          <div className="p-3 bg-white rounded border border-[#eee] mt-2">
+            <p className="text-[12px] text-[#888] italic">This email was sent by FenceLine (outreach-fenceline.ca) regarding fencing services. If you no longer wish to receive these emails, <span className="text-[#1a4750] underline">click here to unsubscribe</span>. FenceLine, Edmonton, AB, Canada.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-3.5 bg-[#f8f9fb] rounded-lg">
+            <div className="text-[11px] font-semibold text-[#888]">Unsubscribe Link</div>
+            <div className="text-[13px] font-semibold mt-1 text-[#10b981]">Auto-included ✓</div>
+          </div>
+          <div className="p-3.5 bg-[#f8f9fb] rounded-lg">
+            <div className="text-[11px] font-semibold text-[#888]">Physical Address</div>
+            <div className="text-[13px] font-semibold mt-1 text-[#10b981]">Auto-included ✓</div>
+          </div>
+          <div className="p-3.5 bg-[#f8f9fb] rounded-lg">
+            <div className="text-[11px] font-semibold text-[#888]">Opt-out Processing</div>
+            <div className="text-[13px] font-semibold mt-1 text-[#10b981]">Instant ✓</div>
+          </div>
+        </div>
+        <UnsubscribeList />
+      </div>
+    </div>
+  );
+}
+
+function UnsubscribeList() {
+  const { data: unsubs } = trpc.unsubscribes.list.useQuery();
+  const addUnsub = trpc.unsubscribes.add.useMutation({ onSuccess: () => { toast.success("Email added to unsubscribe list"); } });
+  const [newEmail, setNewEmail] = useState("");
+
+  return (
+    <div className="mt-4">
+      <div className="flex justify-between items-center mb-3">
+        <div className="text-[13px] font-semibold text-[#1a4750]">Unsubscribe List ({unsubs?.length || 0})</div>
+        <div className="flex gap-2">
+          <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="Add email to block list..." className="px-3 py-1.5 rounded-lg border border-[#ddd] text-[12px] w-56" />
+          <button onClick={() => { if (newEmail) { addUnsub.mutate({ email: newEmail, reason: "Manual block" }); setNewEmail(""); } }} className="px-3 py-1.5 bg-[#1a4750] text-white rounded-lg text-[12px] font-semibold">Block</button>
+        </div>
+      </div>
+      {unsubs && unsubs.length > 0 ? (
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {(unsubs as any[]).map((u: any, i: number) => (
+            <div key={i} className="flex justify-between items-center p-2 bg-[#f8f9fb] rounded text-[12px]">
+              <span className="font-mono">{u.email}</span>
+              <span className="text-[#888]">{u.reason || "Unsubscribed"} · {new Date(u.unsubscribedAt).toLocaleDateString()}</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-[12px] text-[#aaa] p-3 text-center">No unsubscribes yet. Contacts who opt out will appear here and be excluded from all future sends.</div>
+      )}
     </div>
   );
 }

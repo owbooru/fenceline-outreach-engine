@@ -149,6 +149,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const id = await db.createCampaign(input as any);
+        await db.logActivity("campaign_created", `Campaign "${input.name}" created (${input.track} track)`, { campaignId: id, track: input.track });
         return { id };
       }),
 
@@ -170,6 +171,9 @@ export const appRouter = router({
         if (data.scheduledAt) data.scheduledAt = new Date(data.scheduledAt);
         if (data.status === 'active') data.startedAt = new Date();
         await db.updateCampaign(input.id, data);
+        if (input.data.status) {
+          await db.logActivity(`campaign_${input.data.status}`, `Campaign #${input.id} status changed to ${input.data.status}`, { campaignId: input.id, status: input.data.status });
+        }
         return { success: true };
       }),
 
@@ -412,6 +416,33 @@ export const appRouter = router({
         const results = await scrapeLinkedIn(input);
         return { results };
       }),
+  }),
+
+  // ─── Activity Log ──────────────────────────────────────────────────────────
+  activity: router({
+    list: publicProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(({ input }) => db.getActivityLog(input?.limit)),
+  }),
+
+  // ─── Unsubscribes ─────────────────────────────────────────────────────────
+  unsubscribes: router({
+    list: publicProcedure.query(() => db.getUnsubscribes()),
+
+    add: publicProcedure
+      .input(z.object({
+        email: z.string(),
+        leadId: z.number().optional(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.addUnsubscribe(input.email, input.leadId, input.reason);
+        return { success: true };
+      }),
+
+    check: publicProcedure
+      .input(z.object({ email: z.string() }))
+      .query(({ input }) => db.isUnsubscribed(input.email)),
   }),
 });
 

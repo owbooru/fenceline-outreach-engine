@@ -1,11 +1,12 @@
 import { useLocation } from "wouter";
-import { Search, Filter, Send, Activity } from "lucide-react";
+import { Search, Filter, Send, Activity, Clock } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 
 export default function Home() {
   const [, setLocation] = useLocation();
   const leadsQuery = trpc.leads.list.useQuery({});
   const campaignsQuery = trpc.campaigns.list.useQuery({} as any);
+  const activityQuery = trpc.activity.list.useQuery({});
   const totalLeads = leadsQuery.data?.length || 0;
   const totalCampaigns = campaignsQuery.data?.length || 0;
   const activeCampaigns = campaignsQuery.data?.filter((c: any) => c.status === "active").length || 0;
@@ -108,6 +109,45 @@ export default function Home() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Activity Log */}
+      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-[#1a4750]" />
+            <h3 className="text-[16px] font-bold text-[#1a4750]">Activity Log</h3>
+          </div>
+          <span className="text-[12px] text-[#888]">Last 20 events</span>
+        </div>
+        {!activityQuery.data || activityQuery.data.length === 0 ? (
+          <div className="text-center py-6 text-[#888]">
+            <p className="text-[13px]">No activity yet. Import leads or create campaigns to see events here.</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {(activityQuery.data as any[]).slice(0, 20).map((entry: any, i: number) => {
+              const actionIcons: Record<string, string> = {
+                leads_imported: "📥",
+                campaign_created: "🚀",
+                campaign_activated: "▶️",
+                campaign_paused: "⏸️",
+                unsubscribe: "🚫",
+                email_sent: "✉️",
+                lead_updated: "✏️",
+              };
+              return (
+                <div key={i} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[#f8f9fb] transition-colors">
+                  <span className="text-[16px] mt-0.5">{actionIcons[entry.action] || "📋"}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] text-[#333]">{entry.description}</div>
+                    <div className="text-[11px] text-[#aaa] mt-0.5">{new Date(entry.createdAt).toLocaleString()}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
