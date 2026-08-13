@@ -435,7 +435,7 @@ export default function Find() {
         <div className="mt-5">
           <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mb-4">
             <h3 className="text-[16px] font-bold text-[#1a4750] mb-2">Active Tenders & RFPs</h3>
-            <p className="text-[13px] text-[#888] mb-4">Government and municipal procurement opportunities for fencing and site services across Alberta. Sourced from Alberta Purchasing Connection, MERX, and municipal portals.</p>
+            <p className="text-[13px] text-[#888] mb-4">Government and municipal procurement opportunities for fencing and site services across Alberta. Click any portal to go directly to their active fencing bids.</p>
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 mb-4">
               <span className="text-amber-600">⚠️</span>
               <span className="text-[13px] text-amber-800 font-medium">Requires Chromium on the server for live scraping. Connect SerpAPI or MERX in Settings for automated monitoring.</span>
@@ -448,7 +448,7 @@ export default function Find() {
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Alberta government procurement portal. Publishes RFPs for fencing, construction hoarding, and site services.</p>
-                <a href="https://purchasing.alberta.ca" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+                <a href="https://purchasing.alberta.ca/search?q=fencing&status=Open" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Active Fencing Bids →</a>
               </div>
               <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
@@ -457,7 +457,7 @@ export default function Find() {
                   <span className="badge-amber">Subscription</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">National procurement platform. Government tenders and RFPs for construction, fencing, and infrastructure projects across Canada.</p>
-                <a href="https://www.merx.com" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse MERX →</a>
+                <a href="https://www.merx.com/public/solicitations?keywords=fencing&province=Alberta" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Fencing Tenders →</a>
               </div>
               <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
@@ -466,7 +466,7 @@ export default function Find() {
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Municipal procurement for infrastructure, parks, and construction projects requiring fencing and site services.</p>
-                <a href="https://www.edmonton.ca/programs_services/procurement" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+                <a href="https://www.edmonton.ca/programs_services/procurement/current-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Current Opportunities →</a>
               </div>
               <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
@@ -475,7 +475,7 @@ export default function Find() {
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Calgary municipal procurement for construction, transit, and infrastructure projects.</p>
-                <a href="https://www.calgary.ca/procurement" target="_blank" rel="noopener" className="text-[12px] text-[#1a4750] font-semibold hover:underline">Browse portal →</a>
+                <a href="https://www.calgary.ca/procurement/open-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Open Opportunities →</a>
               </div>
             </div>
             <div className="mt-4 p-3 bg-[#f4f7f6] border border-[#d4ddd8] rounded-lg">

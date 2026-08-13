@@ -114,3 +114,30 @@
 - [x] Settings page: Add Gmail API, separate MERX/APC cards, ZeroBounce in own section
 - [x] Find page: Add separate Tenders & RFPs tab
 - [x] Campaigns page: Add per-campaign metrics (sent/opened/replied/bounced/pace)
+
+## POC Priority Features
+- [x] Duplicate detection on lead import (check by email or name+company before creating)
+- [x] CASL-compliant unsubscribe handling (opt-out link in templates, unsubscribe list, auto-respect)
+- [x] Email preview before sending (show personalized email for each contact)
+- [x] Activity log (timeline of all system actions — imports, sends, hot leads, campaign events)
+
+## Email Sending Integration
+- [x] Gmail API / SMTP email sending backend
+- [x] Open tracking pixel endpoint
+- [x] Click tracking link wrapper endpoint
+- [x] Human-pace sending queue with randomized 3-8 minute delays
+- [x] Reply detection and auto-pause on reply
+- [x] Wire Campaigns page "Send" button to actually deliver emails (frontend)
+
+## Next Steps - Phase 2
+- [x] Enroll Leads button on each campaign (select leads from Segment to assign to campaign)
+- [x] Sending schedule (Mon-Fri 8am-5pm MST only, no weekends/evenings)
+- [x] Gmail App Password setup instructions in Settings page
+
+## Campaign Enrolled Leads Status
+- [x] Show enrolled leads list on each campaign with contacted/pending status indicator
+
+## Campaign Enhancements
+- [x] Remove from Campaign button on each enrolled lead
+- [x] Enrolled count in campaign card header (X enrolled, Y contacted, Z pending)
+- [x] Resend option for bounced leads with email update

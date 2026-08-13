@@ -189,3 +189,27 @@ export const integrationConfigs = mysqlTable("integration_configs", {
 
 export type IntegrationConfig = typeof integrationConfigs.$inferSelect;
 export type InsertIntegrationConfig = typeof integrationConfigs.$inferInsert;
+
+// ─── Activity Log ───────────────────────────────────────────────────────────
+export const activityLog = mysqlTable("activity_log", {
+  id: int("id").autoincrement().primaryKey(),
+  action: varchar("action", { length: 128 }).notNull(),
+  description: text("description").notNull(),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ActivityLogEntry = typeof activityLog.$inferSelect;
+export type InsertActivityLogEntry = typeof activityLog.$inferInsert;
+
+// ─── Unsubscribes ───────────────────────────────────────────────────────────
+export const unsubscribes = mysqlTable("unsubscribes", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull().unique(),
+  leadId: int("leadId"),
+  reason: text("reason"),
+  unsubscribedAt: timestamp("unsubscribedAt").defaultNow().notNull(),
+});
+
+export type Unsubscribe = typeof unsubscribes.$inferSelect;
+export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;

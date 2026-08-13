@@ -7,6 +7,8 @@ import * as db from "./db";
 import { searchWebForLeads } from "./webSearch";
 import { scrapeLinkedIn } from "./linkedinScraper";
 import { draftOutreachEmail } from "./emailDrafter";
+import { sendCampaignStep, getQueueStatus, getEmailConfig } from "./emailSender";
+import { handleReply } from "./replyDetector";
 
 export const appRouter = router({
   system: systemRouter,
@@ -150,6 +152,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         const id = await db.createCampaign(input as any);
+        await db.logActivity("campaign_created", `Campaign "${input.name}" created (${input.track} track)`, { campaignId: id, track: input.track });
         return { id };
       }),
 
@@ -171,6 +174,9 @@ export const appRouter = router({
         if (data.scheduledAt) data.scheduledAt = new Date(data.scheduledAt);
         if (data.status === 'active') data.startedAt = new Date();
         await db.updateCampaign(input.id, data);
+        if (input.data.status) {
+          await db.logActivity(`campaign_${input.data.status}`, `Campaign #${input.id} status changed to ${input.data.status}`, { campaignId: input.id, status: input.data.status });
+        }
         return { success: true };
       }),
 
@@ -187,6 +193,17 @@ export const appRouter = router({
     getLeads: publicProcedure
       .input(z.object({ campaignId: z.number() }))
       .query(({ input }) => db.getCampaignLeads(input.campaignId)),
+
+    unenrollLead: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await db.getDb();
+        if (!database) throw new Error("Database not available");
+        const { campaignLeads } = await import("../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        await database.delete(campaignLeads).where(eq(campaignLeads.id, input.id));
+        return { success: true };
+      }),
   }),
 
   // ─── Sequence Steps ────────────────────────────────────────────────────────
@@ -428,6 +445,33 @@ export const appRouter = router({
       }))
       .mutation(({ input }) => draftOutreachEmail(input)),
   }),
+  // ─── Activity Log ──────────────────────────────────────────────────────────
+  activity: router({
+    list: publicProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(({ input }) => db.getActivityLog(input?.limit)),
+  }),
+
+  // ─── Unsubscribes ─────────────────────────────────────────────────────────
+  unsubscribes: router({
+    list: publicProcedure.query(() => db.getUnsubscribes()),
+
+    add: publicProcedure
+      .input(z.object({
+        email: z.string(),
+        leadId: z.number().optional(),
+        reason: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        await db.addUnsubscribe(input.email, input.leadId, input.reason);
+        return { success: true };
+      }),
+
+    check: publicProcedure
+      .input(z.object({ email: z.string() }))
+      .query(({ input }) => db.isUnsubscribed(input.email)),
+  }),
+
 });
 
 export type AppRouter = typeof appRouter;
