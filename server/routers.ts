@@ -433,6 +433,28 @@ export const appRouter = router({
   }),
 
   // ─── AI (email drafting) ─────────────────────────────────────────────────────
+  // ─── Email sending (SMTP queue) ──────────────────────────────────────────────
+  // Their push shipped the sender/queue (emailSender.ts), the tracking routes,
+  // and the Campaigns UI (which calls trpc.email.status / trpc.email.sendStep),
+  // but the router that wires them was missing — added here so sending works.
+  email: router({
+    status: publicProcedure.query(() => ({
+      configured: getEmailConfig() !== null,
+      ...getQueueStatus(),
+    })),
+
+    sendStep: publicProcedure
+      .input(z.object({ campaignId: z.number(), stepId: z.number() }))
+      .mutation(({ input }) => sendCampaignStep(input.campaignId, input.stepId)),
+
+    recordReply: publicProcedure
+      .input(z.object({ leadId: z.number(), campaignId: z.number().optional() }))
+      .mutation(async ({ input }) => {
+        await handleReply(input.leadId, input.campaignId);
+        return { success: true };
+      }),
+  }),
+
   ai: router({
     draftEmail: publicProcedure
       .input(z.object({
