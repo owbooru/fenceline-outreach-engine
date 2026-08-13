@@ -36,34 +36,11 @@ export default function Campaigns() {
       {/* Active Campaigns */}
       <div className="bg-white rounded-xl border border-[#e8e8ee] p-6">
         <div className="flex justify-between items-center mb-4">
-          <div><h3 className="text-[16px] font-bold text-[#1a4750]">Active Campaigns</h3><p className="text-[13px] text-[#888]">2 campaigns running</p></div>
+          <div><h3 className="text-[16px] font-bold text-[#1a4750]">Active Campaigns</h3><p className="text-[13px] text-[#888]">Campaigns will appear here once created</p></div>
           <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold">+ New Campaign</button>
         </div>
-        <div className="p-4 border border-[#e8e8ee] rounded-xl mb-3">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3"><div className="w-1 h-10 rounded bg-[#10b981]" /><div><div className="text-[15px] font-semibold">Fence Sales — Existing Customers AB</div><div className="text-[13px] text-[#888] mt-0.5">Template: Existing Customer · Sender: Rob McMullen</div></div></div>
-            <span className="badge-green">Active</span>
-          </div>
-          <div className="flex gap-6 mt-4 ml-4">
-            <div><div className="text-[11px] font-semibold text-[#888]">Sent</div><div className="text-[16px] font-bold">46 / 46</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Opened</div><div className="text-[16px] font-bold">38%</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Replied</div><div className="text-[16px] font-bold">4</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">1</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">10/day</div></div>
-          </div>
-        </div>
-        <div className="p-4 border border-[#e8e8ee] rounded-xl">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3"><div className="w-1 h-10 rounded bg-[#f59e0b]" /><div><div className="text-[15px] font-semibold">Fence Sales — New National (Ontario/BC)</div><div className="text-[13px] text-[#888] mt-0.5">Template: New National · Sender: Rob McMullen</div></div></div>
-            <span className="badge-amber">Sending</span>
-          </div>
-          <div className="flex gap-6 mt-4 ml-4">
-            <div><div className="text-[11px] font-semibold text-[#888]">Sent</div><div className="text-[16px] font-bold">37 / 89</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Opened</div><div className="text-[16px] font-bold">29%</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Replied</div><div className="text-[16px] font-bold">2</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">1</div></div>
-            <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">8/day</div></div>
-          </div>
+        <div className="text-center py-12 text-[#aaa]">
+          <p className="text-[14px]">No campaigns created yet. Import contacts from Find, then create a campaign to start outreach.</p>
         </div>
       </div>
     </div>
