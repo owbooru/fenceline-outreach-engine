@@ -379,8 +379,20 @@ export default function Find() {
           </div>
           
           {results.length === 0 ? (
-            <div className="text-center py-8 text-[#888]">
-              <p className="text-[14px]">No results found. Try adjusting your criteria.</p>
+            <div className="text-center py-8">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-lg mb-4">
+                <span className="text-amber-600 text-[14px]">⚠️</span>
+                <span className="text-[13px] text-amber-800 font-medium">Chromium not detected on this server</span>
+              </div>
+              <p className="text-[14px] text-[#666] max-w-md mx-auto">
+                Real-time scraping of tender portals (Alberta Purchasing Connection, MERX) requires Chromium installed on the server.
+              </p>
+              <p className="text-[13px] text-[#888] mt-2 max-w-md mx-auto">
+                On your VPS, run: <code className="bg-[#f0f0f0] px-2 py-0.5 rounded text-[12px]">sudo apt install chromium-browser</code> then restart the app.
+              </p>
+              <p className="text-[13px] text-[#888] mt-3">
+                Or use the <button onClick={() => setActiveTab("csv")} className="text-[#1a4750] font-semibold hover:underline">CSV Import</button> tab to import contacts from Scott's Directories or Sales Navigator.
+              </p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -422,6 +434,37 @@ export default function Find() {
       {/* CSV Import Tab */}
       {activeTab === "csv" && (
         <div>
+          {/* Instructions */}
+          <div className="bg-white rounded-xl border border-[#e8e8ee] p-5 mb-4 mt-5">
+            <h3 className="text-[15px] font-bold text-[#1a4750] mb-3">How to Import Contacts</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-3 bg-[#f8f9fa] rounded-lg">
+                <div className="text-[13px] font-semibold text-[#1a4750] mb-2">From Scott's Directories:</div>
+                <ol className="text-[12px] text-[#555] space-y-1 list-decimal list-inside">
+                  <li>Log into Scott's Directories</li>
+                  <li>Search by company or industry</li>
+                  <li>Select the contacts you want</li>
+                  <li>Click "Export" → choose CSV format</li>
+                  <li>Drop the file below</li>
+                </ol>
+              </div>
+              <div className="p-3 bg-[#f8f9fa] rounded-lg">
+                <div className="text-[13px] font-semibold text-[#1a4750] mb-2">From LinkedIn Sales Navigator:</div>
+                <ol className="text-[12px] text-[#555] space-y-1 list-decimal list-inside">
+                  <li>Build your lead list with filters</li>
+                  <li>Select all leads in the list</li>
+                  <li>Click "Export to CSV"</li>
+                  <li>Drop the file below</li>
+                </ol>
+              </div>
+            </div>
+            <div className="mt-3 p-3 bg-[#f0f7f7] rounded-lg border border-[#d4e8e4]">
+              <div className="text-[12px] font-semibold text-[#1a4750] mb-1">Required CSV columns:</div>
+              <code className="text-[11px] text-[#444] bg-white px-2 py-1 rounded block">First Name, Last Name, Company, Title, Location</code>
+              <div className="text-[11px] text-[#888] mt-1">Column names are flexible — the system auto-detects common variations (e.g., "Job Title" = "Title", "Organization" = "Company")</div>
+            </div>
+          </div>
+
           {/* Drag and Drop */}
           <div
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
