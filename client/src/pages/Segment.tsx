@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 type SegmentFilter = "all" | "new_local" | "new_national" | "existing" | "unverified";
 
 export default function Segment() {
   const [filter, setFilter] = useState<SegmentFilter>("all");
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
   const { data: leadsData, isLoading } = trpc.leads.list.useQuery({});
 
   const leads = leadsData || [];
@@ -89,8 +91,19 @@ export default function Segment() {
             <p className="text-[13px] text-[#888]">{counts.all} contacts across imported companies</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-4 py-2 bg-white text-[#1a4750] border border-[#ddd] rounded-lg text-[13px] font-semibold">Filter</button>
-            <button className="px-4 py-2 bg-white text-[#1a4750] border border-[#ddd] rounded-lg text-[13px] font-semibold">Export</button>
+            <button onClick={() => setShowFilterPanel(!showFilterPanel)} className={`px-4 py-2 bg-white text-[#1a4750] border rounded-lg text-[13px] font-semibold ${showFilterPanel ? "border-[#1a4750]" : "border-[#ddd]"}`}>Filter</button>
+            <button onClick={() => {
+              if (filtered.length === 0) { toast.info("No contacts to export"); return; }
+              const headers = ["First Name", "Last Name", "Email", "Company", "Job Title", "City", "Segment", "Source"];
+              const rows = filtered.map(l => [l.firstName || "", l.lastName || "", l.email || "", l.company || "", l.jobTitle || "", l.city || "", l.computedSegment, l.source || ""]);
+              const csv = [headers.join(","), ...rows.map(r => r.map(v => `"${(v || "").replace(/"/g, '""')}"`).join(","))].join("\n");
+              const blob = new Blob([csv], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url; a.download = `fenceline-contacts-${filter}.csv`; a.click();
+              URL.revokeObjectURL(url);
+              toast.success(`Exported ${filtered.length} contacts`);
+            }} className="px-4 py-2 bg-white text-[#1a4750] border border-[#ddd] rounded-lg text-[13px] font-semibold">Export</button>
           </div>
         </div>
 
