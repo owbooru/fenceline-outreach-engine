@@ -20,12 +20,17 @@ interface EmailConfig {
 let transporter: nodemailer.Transporter | null = null;
 
 export function getEmailConfig(): EmailConfig | null {
-  const host = process.env.SMTP_HOST;
-  const port = parseInt(process.env.SMTP_PORT || "587");
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
+  // Resend over SMTP: if RESEND_API_KEY is set, route through Resend's SMTP with
+  // the API key as the password. Requires a VERIFIED sender domain in Resend and
+  // SMTP_FROM_EMAIL set to an address on that domain. Plain SMTP_* still works and
+  // takes precedence if provided.
+  const resendKey = process.env.RESEND_API_KEY;
+  const host = process.env.SMTP_HOST || (resendKey ? "smtp.resend.com" : undefined);
+  const port = parseInt(process.env.SMTP_PORT || (resendKey ? "465" : "587"));
+  const user = process.env.SMTP_USER || (resendKey ? "resend" : undefined);
+  const pass = process.env.SMTP_PASS || resendKey;
   const fromName = process.env.SMTP_FROM_NAME || "Rob McMullen";
-  const fromEmail = process.env.SMTP_FROM_EMAIL || user || "";
+  const fromEmail = process.env.SMTP_FROM_EMAIL || (user && user !== "resend" ? user : "");
 
   if (!host || !user || !pass) return null;
 
