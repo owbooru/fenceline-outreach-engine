@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useCallback } from "react";
 import { trpc } from "@/lib/trpc";
 import { Loader2, Search, Check, Upload, Plus, Trash2 } from "lucide-react";
+import Papa from "papaparse";
 
 interface SearchResult {
   name: string;
@@ -69,26 +70,26 @@ export default function Find() {
 
   const parseCsv = (file: File) => {
     setCsvFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const lines = text.split("\n").filter(l => l.trim());
-      if (lines.length < 2) return;
-      const headers = lines[0].split(",").map(h => h.trim().toLowerCase().replace(/"/g, ""));
-      const firstNameIdx = headers.findIndex(h => h.includes("first") && h.includes("name"));
-      const lastNameIdx = headers.findIndex(h => h.includes("last") && h.includes("name"));
-      const companyIdx = headers.findIndex(h => h.includes("company") || h.includes("organization"));
-      const titleIdx = headers.findIndex(h => h.includes("title") || h.includes("position") || h.includes("role"));
-      const locationIdx = headers.findIndex(h => h.includes("location") || h.includes("city") || h.includes("geography"));
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        const rows = result.data as Record<string, string>[];
+        const parsed: SearchResult[] = [];
 
-      const parsed: SearchResult[] = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(",").map(c => c.trim().replace(/"/g, ""));
-        const firstName = firstNameIdx >= 0 ? cols[firstNameIdx] : "";
-        const lastName = lastNameIdx >= 0 ? cols[lastNameIdx] : "";
-        const company = companyIdx >= 0 ? cols[companyIdx] : "";
-        const title = titleIdx >= 0 ? cols[titleIdx] : "";
-        const location = locationIdx >= 0 ? cols[locationIdx] : "";
+        for (const row of rows) {
+          // Flexible column matching for Sales Navigator and other CSV formats
+          const keys = Object.keys(row).map(k => k.toLowerCase());
+          const getCol = (patterns: string[]) => {
+            const key = Object.keys(row).find(k => patterns.some(p => k.toLowerCase().includes(p)));
+            return key ? (row[key] || "").trim() : "";
+          };
+
+          const firstName = getCol(["first name", "firstname", "first_name"]);
+          const lastName = getCol(["last name", "lastname", "last_name"]);
+          const company = getCol(["company", "organization", "account", "company name"]);
+          const title = getCol(["title", "position", "role", "job title", "jobtitle"]);
+          const location = getCol(["location", "city", "geography", "region"]);
         if (!firstName && !lastName) continue;
 
         // Apply known pattern
@@ -123,8 +124,8 @@ export default function Find() {
         });
       }
       setCsvData(parsed);
-    };
-    reader.readAsText(file);
+      },
+    });
   };
 
   const importCsv = () => {
@@ -223,8 +224,14 @@ export default function Find() {
       <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Find Contacts</h1>
       <p className="text-[14px] text-[#777] mt-1.5">Source decision-makers from directories, web scraping, and LinkedIn exports</p>
 
+      {/* Tab Switcher */}
+      <div className="flex gap-1 mt-5 mb-4 bg-[#f4f7f6] p-1 rounded-lg w-fit">
+        <button onClick={() => setActiveTab("search")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "search" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>Search Sources</button>
+        <button onClick={() => setActiveTab("csv")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "csv" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>CSV Import</button>
+      </div>
+
       {/* Info Box */}
-      {!searching && !showResults && (
+      {activeTab === "search" && !searching && !showResults && (
         <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
           <p className="text-[13px] text-[#444] leading-relaxed">
             <strong>Where the engine looks:</strong> Company websites (team pages, about pages, contact pages), Google search results for LinkedIn profiles, industry association member directories, MERX, Alberta Purchasing Connection, municipal procurement portals, and any paid directory APIs you connect in Settings. Focused on finding companies that need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing.
@@ -233,7 +240,7 @@ export default function Find() {
       )}
 
       {/* Search Criteria */}
-      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
+      {activeTab === "search" && <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
         <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">Set Your Target Criteria</h3>
         <p className="text-[13px] text-[#888] mb-5">Tell the engine what you're selling, where, and who you want to reach — then it goes and finds them</p>
         
@@ -308,10 +315,10 @@ export default function Find() {
             <span className="text-[12px] text-[#aaa]">Scrapes company websites, directories, Google results, and public profiles</span>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* Progress */}
-      {searching && (
+      {activeTab === "search" && searching && (
         <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-5 h-5 border-[3px] border-[#1a4750] border-t-transparent rounded-full animate-spin" />
@@ -330,7 +337,7 @@ export default function Find() {
       )}
 
       {/* Tenders Card */}
-      {showTenders && (
+      {activeTab === "search" && showTenders && (
         <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[16px]">📋</span>
@@ -363,7 +370,7 @@ export default function Find() {
       )}
 
       {/* Results */}
-      {showResults && (
+      {activeTab === "search" && showResults && (
         <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
           <div className="flex justify-between items-center mb-4">
             <div>
@@ -411,8 +418,112 @@ export default function Find() {
           {results.length > 0 && (
             <div className="text-center pt-3 text-[13px] text-[#888]">
               Showing {results.length} contacts · Click "Import All" to move them to Segment
+          </div>
+         )}
+        </div>
+      )}
+
+      {/* CSV Import Tab */}
+      {activeTab === "csv" && (
+        <div>
+          {/* Drag and Drop */}
+          <div
+            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleCsvDrop}
+            className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${dragOver ? "border-[#1a4750] bg-[#f0f7f7]" : "border-[#ddd] bg-white"}`}
+          >
+            <Upload className="h-8 w-8 mx-auto mb-3 text-[#aaa]" />
+            <div className="text-[14px] font-semibold mb-1">Drop your CSV file here</div>
+            <div className="text-[13px] text-[#888] mb-3">Export from Sales Navigator, Scott's Directories, or any spreadsheet</div>
+            <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold cursor-pointer hover:bg-[#2a5a65] transition-colors">
+              Browse Files
+              <input type="file" accept=".csv" onChange={handleCsvSelect} className="hidden" />
+            </label>
+            <div className="text-[11px] text-[#aaa] mt-3">Supports: First Name, Last Name, Company, Title, Location columns</div>
+          </div>
+
+          {/* CSV Results */}
+          {csvData.length > 0 && (
+            <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+              <div className="flex justify-between items-center mb-4">
+                <div>
+                  <h3 className="text-[16px] font-bold text-[#1a4750]">{csvFileName} — {csvData.length} contacts parsed</h3>
+                  <p className="text-[13px] text-[#888] mt-1">Email patterns applied from Known Patterns database</p>
+                </div>
+                <button
+                  onClick={importCsv}
+                  disabled={createBulk.isPending}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold hover:bg-[#2a5a65] transition-colors disabled:opacity-50"
+                >
+                  {createBulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Import All to Segment →
+                </button>
+              </div>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {csvData.map((c, i) => (
+                  <div key={i} className="flex items-center gap-4 p-3 rounded-lg border border-[#eee]">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[14px] font-semibold">{c.name}</span>
+                        <span className="badge-gray">{c.role}</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-[12px] text-[#888]">
+                        <span>🏢 {c.company}</span>
+                        <span>📍 {c.region}</span>
+                        <span>📧 <span className="font-mono">{c.email}</span></span>
+                        <span className={c.status === "Pattern" ? "badge-amber" : "badge-gray"}>{c.status}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
+
+          {/* Known Patterns */}
+          <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+            <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">Known Email Patterns</h3>
+            <p className="text-[13px] text-[#888] mb-4">When you know a company's email format, add it here. CSV imports will auto-apply matching patterns.</p>
+            
+            <div className="space-y-2 mb-4">
+              {savedPatterns.map((p, i) => (
+                <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-[#eee]">
+                  <div className="flex items-center gap-4">
+                    <span className="text-[14px] font-semibold">{p.company}</span>
+                    <span className="font-mono text-[13px] text-[#888]">{p.format}@{p.domain}</span>
+                  </div>
+                  <button onClick={() => removePattern(i)} className="text-[#ccc] hover:text-red-400 transition-colors">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add Pattern Form */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="text-[11px] font-semibold text-[#888] block mb-1">Company</label>
+                <input value={patternCompany} onChange={e => setPatternCompany(e.target.value)} placeholder="e.g., AECON" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]" />
+              </div>
+              <div className="flex-1">
+                <label className="text-[11px] font-semibold text-[#888] block mb-1">Domain</label>
+                <input value={patternDomain} onChange={e => setPatternDomain(e.target.value)} placeholder="e.g., aecon.com" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]" />
+              </div>
+              <div className="w-[160px]">
+                <label className="text-[11px] font-semibold text-[#888] block mb-1">Format</label>
+                <select value={patternFormat} onChange={e => setPatternFormat(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-white">
+                  <option value="first.last">first.last@</option>
+                  <option value="flast">flast@</option>
+                  <option value="firstl">firstl@</option>
+                  <option value="first_last">first_last@</option>
+                </select>
+              </div>
+              <button onClick={addPattern} className="px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold shrink-0">
+                <Plus className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

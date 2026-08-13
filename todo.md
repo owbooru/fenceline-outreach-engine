@@ -100,6 +100,10 @@
 - [x] Keep other services as future expansion option (not in current search)
 
 ## Next Steps Features
-- [ ] Add Known Patterns database (save/edit company email patterns in Settings)
-- [ ] Add CSV Import tab to Find page (drag & drop Sales Navigator exports)
-- [ ] Add Scott's Directories API connector slot in Settings
+- [x] Add Known Patterns database (save/edit company email patterns on Find page)
+- [x] Add CSV Import tab to Find page (drag & drop Sales Navigator exports)
+- [x] Add Scott's Directories API connector slot in Settings
+- [x] Wire up Campaigns page with working New Campaign form and campaign management
+- [x] Wire up Tracking page with real database-driven engagement stats
+- [x] Wire up Settings page with working connector API key forms and domain management
+- [x] Add working sender profile creation on Templates page
