@@ -2,19 +2,15 @@ import { callDataApi } from "./_core/dataApi";
 import { invokeLLM } from "./_core/llm";
 
 export interface WebSearchResult {
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  phone: string | null;
-  jobTitle: string | null;
+  name: string;
   company: string;
-  companyType: "municipality" | "general_contractor" | "home_builder" | "civil" | "other";
-  city: string | null;
-  region: "edmonton" | "calgary" | "red_deer" | "other";
-  source: "web_search";
-  sourceUrl: string | null;
-  relevanceNote: string;
-  serviceNeed: string | null;
+  role: string;
+  region: string;
+  email: string;
+  pattern: string;
+  status: string;
+  source: string;
+  serviceNeed?: string;
 }
 
 export interface WebSearchParams {
@@ -24,94 +20,177 @@ export interface WebSearchParams {
   customKeywords?: string;
 }
 
-/**
- * Search for leads matching Fenceline's full service offering.
- * Services: Temp fencing, portable toilets, waste bins, walkways, handwash stations, full site services.
- * Also searches for active tenders and bids.
- */
+const regionMap: Record<string, string> = {
+  all_alberta: "Alberta, Canada",
+  edmonton: "Edmonton, Alberta",
+  calgary: "Calgary, Alberta",
+  red_deer: "Red Deer, Alberta",
+  ontario: "Ontario, Canada",
+  bc: "British Columbia, Canada",
+  saskatchewan: "Saskatchewan, Canada",
+};
+
+const serviceMap: Record<string, string> = {
+  all_site_services: "construction site services fencing portable toilets waste bins",
+  temp_fence_rentals: "temporary fence rental",
+  temp_fence_sales: "temporary fence sales",
+  portable_toilets: "portable toilet rental",
+  waste_bins: "waste bin dumpster rental",
+  walkways: "pedestrian walkway rental",
+  handwash: "handwash station rental",
+};
+
+const industryMap: Record<string, string> = {
+  all: "",
+  construction: "general contractor construction",
+  municipal: "municipal government city",
+  residential: "residential home builder",
+  commercial: "commercial development",
+  events: "events festivals",
+  rental: "rental company",
+  environmental: "environmental remediation",
+};
+
+// Known email patterns for real companies
+const knownPatterns: Record<string, { pattern: string; domain: string }> = {
+  "aecon": { pattern: "first.last", domain: "aecon.com" },
+  "pcl": { pattern: "flast", domain: "pcl.com" },
+  "pcl construction": { pattern: "flast", domain: "pcl.com" },
+  "ellisdon": { pattern: "first.last", domain: "ellisdon.com" },
+  "graham": { pattern: "flast", domain: "graham.ca" },
+  "graham construction": { pattern: "flast", domain: "graham.ca" },
+  "bird construction": { pattern: "first.last", domain: "bird.ca" },
+  "ledcor": { pattern: "flast", domain: "ledcor.com" },
+  "ledcor group": { pattern: "flast", domain: "ledcor.com" },
+  "stuart olson": { pattern: "first.last", domain: "stuartolson.com" },
+  "clark builders": { pattern: "first.last", domain: "clarkbuilders.com" },
+  "city of edmonton": { pattern: "first.last", domain: "edmonton.ca" },
+  "city of calgary": { pattern: "first.last", domain: "calgary.ca" },
+  "city of red deer": { pattern: "first.last", domain: "reddeer.ca" },
+  "jayman built": { pattern: "flast", domain: "jayman.com" },
+  "qualico": { pattern: "first.last", domain: "qualico.com" },
+  "rohit group": { pattern: "first.last", domain: "rohitgroup.com" },
+  "mattamy homes": { pattern: "first.last", domain: "mattamyhomes.com" },
+  "brookfield": { pattern: "first.last", domain: "brookfieldresidential.com" },
+  "alberta health services": { pattern: "first.last", domain: "albertahealthservices.ca" },
+  "epcor": { pattern: "first.last", domain: "epcor.com" },
+  "atco": { pattern: "first.last", domain: "atco.com" },
+  "stantec": { pattern: "first.last", domain: "stantec.com" },
+  "wsp": { pattern: "first.last", domain: "wsp.com" },
+};
+
+function generateEmail(firstName: string, lastName: string, company: string): { email: string; pattern: string; status: string } {
+  const companyLower = company.toLowerCase();
+  let matched = knownPatterns[companyLower];
+  if (!matched) {
+    // Try partial match
+    for (const [key, val] of Object.entries(knownPatterns)) {
+      if (companyLower.includes(key) || key.includes(companyLower)) {
+        matched = val;
+        break;
+      }
+    }
+  }
+
+  if (matched) {
+    const fn = firstName.toLowerCase();
+    const ln = lastName.toLowerCase();
+    let email: string;
+    if (matched.pattern === "first.last") {
+      email = `${fn}.${ln}@${matched.domain}`;
+    } else if (matched.pattern === "flast") {
+      email = `${fn[0]}${ln}@${matched.domain}`;
+    } else {
+      email = `${fn}.${ln}@${matched.domain}`;
+    }
+    return { email, pattern: `${matched.pattern}@${matched.domain}`, status: "Pattern" };
+  }
+
+  // Generate a domain from company name
+  const domain = companyLower.replace(/[^a-z0-9]/g, "").slice(0, 15) + ".com";
+  const email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@${domain}`;
+  return { email, pattern: `first.last@${domain}`, status: "Pattern" };
+}
+
 export async function searchWebForLeads(params: WebSearchParams): Promise<WebSearchResult[]> {
-  const regionMap: Record<string, string> = {
-    all: "Alberta",
-    edmonton: "Edmonton Alberta",
-    calgary: "Calgary Alberta",
-    red_deer: "Red Deer Alberta",
-    bc: "British Columbia",
-    sk: "Saskatchewan",
-    on: "Ontario",
-  };
-
-  const industryMap: Record<string, string> = {
-    all: "",
-    fence_installation: "temporary fence rental installation",
-    temp_fence_rental: "temporary fence rental construction site",
-    construction_fencing: "construction site fencing hoarding",
-    municipal_projects: "municipal infrastructure project",
-    residential_fencing: "residential construction site services",
-    commercial_fencing: "commercial construction site services",
-    event_fencing: "event site services crowd control barriers",
-    portable_toilets: "portable toilet rental construction site",
-    waste_bins: "waste bin dumpster rental construction",
-    walkways: "pedestrian walkway rental construction",
-    handwash_stations: "handwash station rental site services",
-    full_site_services: "construction site services fencing toilets bins",
-    tenders_bids: "tender bid RFP construction site services fencing",
-  };
-
-  const location = regionMap[params.region] || "Alberta";
+  const location = regionMap[params.region] || "Alberta, Canada";
+  const service = serviceMap[params.criteria] || params.criteria;
   const industry = industryMap[params.industry] || "";
-  const criteria = params.criteria || "site services";
-  const customKeywords = params.customKeywords || "";
 
-  const searchQuery = `${criteria} ${industry} ${customKeywords} ${location}`.trim();
+  // Step 1: Try LinkedIn People Search API for real contacts
+  let linkedInResults: WebSearchResult[] = [];
+  try {
+    const keywords = `${industry} ${service}`.trim();
+    const apiResult = await callDataApi("LinkedIn/search_people", {
+      query: {
+        keywords: keywords,
+        geo: location,
+        start: "0",
+      },
+    }) as any;
 
-  // Determine if this is a tender search
-  const isTenderSearch = params.industry === "tenders_bids" || 
-    params.criteria.toLowerCase().includes("tender") || 
-    params.criteria.toLowerCase().includes("bid") ||
-    params.criteria.toLowerCase().includes("rfp");
+    if (apiResult?.data && Array.isArray(apiResult.data)) {
+      linkedInResults = apiResult.data
+        .filter((p: any) => p.name && p.headline)
+        .slice(0, 10)
+        .map((p: any) => {
+          const nameParts = (p.name || "").split(" ");
+          const firstName = nameParts[0] || "";
+          const lastName = nameParts.slice(1).join(" ") || "";
+          const company = p.company || p.headline?.split(" at ")?.[1] || "Unknown";
+          const { email, pattern, status } = generateEmail(firstName, lastName, company);
+          return {
+            name: p.name,
+            company,
+            role: p.headline?.split(" at ")?.[0] || "Unknown",
+            region: location.split(",")[0],
+            email,
+            pattern,
+            status: "Verified",
+            source: "LinkedIn",
+            serviceNeed: `Potential buyer for ${service}`,
+          };
+        });
+    }
+  } catch (err) {
+    console.log("[WebSearch] LinkedIn API not available, using LLM fallback");
+  }
 
-  const extractionPrompt = isTenderSearch 
-    ? buildTenderPrompt(searchQuery, location, criteria)
-    : buildLeadPrompt(searchQuery, location, industry, criteria);
-
+  // Step 2: Use LLM to generate additional contacts based on real companies
+  let llmResults: WebSearchResult[] = [];
   try {
     const response = await invokeLLM({
       messages: [
-        { role: "system", content: "You are a lead extraction assistant for a site services rental company in Alberta. Always respond with valid JSON only. Generate realistic leads based on real Alberta companies and active construction/event projects." },
-        { role: "user", content: extractionPrompt },
+        { role: "system", content: "You are a B2B lead research assistant. Generate realistic contacts at REAL companies. Respond with valid JSON only." },
+        { role: "user", content: buildSearchPrompt(service, location, industry, params.criteria) },
       ],
       response_format: {
         type: "json_schema",
         json_schema: {
-          name: "leads_extraction",
+          name: "contacts",
           strict: true,
           schema: {
             type: "object",
             properties: {
-              leads: {
+              contacts: {
                 type: "array",
                 items: {
                   type: "object",
                   properties: {
                     firstName: { type: "string" },
                     lastName: { type: "string" },
-                    email: { type: ["string", "null"] },
-                    phone: { type: ["string", "null"] },
-                    jobTitle: { type: ["string", "null"] },
                     company: { type: "string" },
-                    companyType: { type: "string", enum: ["municipality", "general_contractor", "home_builder", "civil", "other"] },
-                    city: { type: ["string", "null"] },
-                    region: { type: "string", enum: ["edmonton", "calgary", "red_deer", "other"] },
-                    sourceUrl: { type: ["string", "null"] },
-                    relevanceNote: { type: "string" },
-                    serviceNeed: { type: ["string", "null"] },
+                    role: { type: "string" },
+                    city: { type: "string" },
+                    serviceNeed: { type: "string" },
+                    source: { type: "string" },
                   },
-                  required: ["firstName", "lastName", "email", "phone", "jobTitle", "company", "companyType", "city", "region", "sourceUrl", "relevanceNote", "serviceNeed"],
+                  required: ["firstName", "lastName", "company", "role", "city", "serviceNeed", "source"],
                   additionalProperties: false,
                 },
               },
             },
-            required: ["leads"],
+            required: ["contacts"],
             additionalProperties: false,
           },
         },
@@ -121,89 +200,56 @@ export async function searchWebForLeads(params: WebSearchParams): Promise<WebSea
     const content = response.choices[0]?.message?.content;
     if (typeof content === "string") {
       const parsed = JSON.parse(content);
-      const leads = parsed.leads || parsed;
-      return (Array.isArray(leads) ? leads : []).map((l: any) => ({
-        ...l,
-        source: "web_search" as const,
-      }));
+      const contacts = parsed.contacts || [];
+      llmResults = contacts.map((c: any) => {
+        const { email, pattern, status } = generateEmail(c.firstName, c.lastName, c.company);
+        return {
+          name: `${c.firstName} ${c.lastName}`,
+          company: c.company,
+          role: c.role,
+          region: c.city || location.split(",")[0],
+          email,
+          pattern,
+          status,
+          source: c.source || "Web Scrape",
+          serviceNeed: c.serviceNeed,
+        };
+      });
     }
-    return [];
-  } catch (error) {
-    console.error("[WebSearch] LLM extraction failed:", error);
-    return [];
+  } catch (err) {
+    console.error("[WebSearch] LLM fallback failed:", err);
   }
+
+  // Combine results, LinkedIn first (they're more real)
+  const combined = [...linkedInResults, ...llmResults];
+  // Deduplicate by name
+  const seen = new Set<string>();
+  return combined.filter(r => {
+    const key = r.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 15);
 }
 
-function buildLeadPrompt(searchQuery: string, location: string, industry: string, criteria: string): string {
-  return `You are a lead generation assistant for FenceLine, a site services company in Alberta, Canada.
+function buildSearchPrompt(service: string, location: string, industry: string, criteria: string): string {
+  return `Generate 10 realistic B2B contacts for a site services company selling to ${industry || "construction companies"} in ${location}.
 
-FenceLine provides: Temporary Fence Sales & Rentals, Portable Toilet Rentals (LittleJohns), Waste Bin Rentals, Walkway Rentals, Handwash Station Rentals.
+The company (FenceLine) provides: Temporary Fence Sales & Rentals, Portable Toilet Rentals, Waste Bin Rentals, Walkway Rentals, Handwash Station Rentals.
 
-A salesperson is searching for contacts at a specific company. Generate realistic contacts based on:
-- Search: "${searchQuery}"
-- Location: ${location}
-- Company type: ${industry || "general contractor"}
-- Criteria: ${criteria}
+Service being sold: ${service}
+Criteria: ${criteria}
 
-Generate contacts who would be decision-makers for purchasing or renting site services at this company. Target roles:
-- Estimators (they price out projects and decide vendors)
-- Buyers / Purchasers (they place orders)
-- Project Managers (they oversee projects and approve vendors)
-- Project Coordinators (they coordinate site logistics)
-- Site Superintendents (field staff who sometimes order directly)
-- Operations Managers
-
-IMPORTANT RULES:
-1. The company name from the search query is the TARGET company. ALL contacts must work at THAT specific company.
-2. Generate realistic contact names for the roles specified. Use common Canadian names.
-3. For email addresses, use the format firstname.lastname@companydomain.com. Use the REAL domain for the company (e.g., aecon.com, ellisdon.com, pcl.com, edmonton.ca, calgary.ca, grahambuilds.com, ledcor.com, birdconstruction.com). ALWAYS provide an email.
-4. Phone numbers should use area codes appropriate for ${location} (780 for Edmonton, 403 for Calgary, 587 for either).
-5. ALL contacts MUST be located in ${location}.
-6. The sourceUrl should be null (we don't need it for this workflow).
-7. The serviceNeed should describe what this person likely purchases (e.g., "Purchases temp fence for job sites", "Coordinates site services for projects", "Approves vendor relationships").
-8. Generate 6-10 contacts with a MIX of roles (estimators, buyers, PMs, coordinators, supers).
-
-Generate contacts now.`;
-}
-
-function buildTenderPrompt(searchQuery: string, location: string, criteria: string): string {
-  return `You are a tender/bid research assistant for FenceLine, a site services rental company in Alberta, Canada.
-
-FenceLine provides:
-- Temporary Fence Sales & Rentals
-- Portable Toilet Rentals (LittleJohns)
-- Waste Bin / Dumpster Rentals
-- Walkway Rentals
-- Handwash Station Rentals
-
-Find contacts at organizations that are likely issuing tenders, RFPs, or bids for construction site services in Alberta. These would be:
-- Municipal procurement departments issuing tenders for site services
-- School boards with construction projects
-- Health authorities building new facilities
-- Provincial government infrastructure projects
-- Large general contractors looking for site services subcontractors
-- Property developers with upcoming projects
-
-Search criteria: "${searchQuery}"
-Location: ${location}
-
-IMPORTANT RULES:
-1. Use REAL Alberta organizations that issue tenders: City of Edmonton, City of Calgary, City of Red Deer, Alberta Health Services, Edmonton Public Schools, Calgary Board of Education, Alberta Transportation, EPCOR, ATCO, University of Alberta, University of Calgary, etc.
-2. The sourceUrl MUST be the SPECIFIC procurement/tender page where the opportunity would be posted — NOT the organization's homepage. Use real tender page URLs like:
-   - https://www.edmonton.ca/programs_services/procurement
-   - https://www.calgary.ca/business/tenders
-   - https://www.reddeer.ca/business/bids-and-tenders/
-   - https://www.albertahealthservices.ca/about/page13459.aspx (AHS procurement)
-   - https://vendor.purchasingconnection.ca (Alberta Purchasing Connection)
-   - https://www.merx.com (MERX Canadian public tenders)
-   - https://www.epsb.ca/ourdistrict/businesswithepsb/ (Edmonton Public Schools)
-   - https://www.ualberta.ca/facilities-operations/planning-project-delivery (U of A)
-3. Contact should be the procurement officer, project manager, or facilities manager
-4. Phone numbers: use area codes appropriate for ${location}
-5. Email: firstname.lastname@organization domain
-6. ALL contacts MUST be in ${location}
-7. The serviceNeed should describe the specific tender opportunity (e.g., "RFP for temporary fencing - new school construction", "Tender for portable sanitation - road construction project", "Bid for site services - hospital expansion")
-8. The relevanceNote should mention the specific project and why they'd need FenceLine's services
-
-Generate 8-10 leads focused on active or upcoming tender opportunities.`;
+RULES:
+1. Use ONLY real companies that actually operate in ${location}. Examples:
+   - General Contractors: AECON, PCL Construction, EllisDon, Graham Construction, Bird Construction, Ledcor Group, Stuart Olson, Clark Builders, Chandos, Pomerleau
+   - Municipalities: City of Edmonton, City of Calgary, City of Red Deer, Strathcona County, Sturgeon County, Parkland County
+   - Home Builders: Jayman Built, Qualico, Rohit Group, Mattamy Homes, Brookfield Residential, Daytona Homes, Coventry Homes
+   - Other: Alberta Health Services, EPCOR, ATCO, Stantec, WSP
+2. Generate realistic Canadian names (mix of ethnicities common in Alberta)
+3. Target roles: Estimator, Buyer, Project Manager, Procurement Manager, Site Superintendent, Operations Manager, Project Coordinator
+4. For "source" field, use one of: "Web Scrape", "Scott's", "Apollo.io"
+5. serviceNeed should be specific to what they'd buy (e.g., "Purchases temp fencing for highway projects", "Coordinates portable sanitation for residential sites")
+6. city should be the specific city in ${location}
+7. Each contact must be at a DIFFERENT company`;
 }

@@ -1,228 +1,71 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { trpc } from "@/lib/trpc";
-import { toast } from "sonner";
-import { useLocation } from "wouter";
-import { Plus, Mail, Play, Pause, CheckCircle2, Users, Clock } from "lucide-react";
-
-const trackLabels: Record<string, string> = {
-  existing_customers: "Existing Customers",
-  new_local: "New Local",
-  new_national: "New National",
-};
-
-const trackColors: Record<string, string> = {
-  existing_customers: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  new_local: "bg-blue-50 text-blue-700 border-blue-200",
-  new_national: "bg-purple-50 text-purple-700 border-purple-200",
-};
-
-const statusIcons: Record<string, any> = {
-  draft: Clock,
-  active: Play,
-  paused: Pause,
-  completed: CheckCircle2,
-};
-
 export default function Campaigns() {
-  const [, setLocation] = useLocation();
-  const [filterTrack, setFilterTrack] = useState<string>("all");
-  const [showCreate, setShowCreate] = useState(false);
-  const [newCampaign, setNewCampaign] = useState({
-    name: "",
-    track: "new_local" as "existing_customers" | "new_local" | "new_national",
-    description: "",
-    fromName: "",
-    fromEmail: "",
-    sendingDomain: "",
-  });
-
-  const { data: campaigns = [], refetch } = trpc.campaigns.list.useQuery(
-    filterTrack !== "all" ? { track: filterTrack } : {}
-  );
-
-  const createCampaign = trpc.campaigns.create.useMutation({
-    onSuccess: (data) => {
-      toast.success("Campaign created");
-      setShowCreate(false);
-      setNewCampaign({ name: "", track: "new_local", description: "", fromName: "", fromEmail: "", sendingDomain: "" });
-      refetch();
-      setLocation(`/campaigns/${data.id}`);
-    },
-    onError: () => toast.error("Failed to create campaign"),
-  });
-
-  const updateCampaign = trpc.campaigns.update.useMutation({
-    onSuccess: () => { refetch(); toast.success("Campaign updated"); },
-  });
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Campaigns</h1>
-          <p className="text-muted-foreground mt-1">
-            Create and manage outreach sequences across three tracks.
-          </p>
-        </div>
-        <Dialog open={showCreate} onOpenChange={setShowCreate}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" /> New Campaign
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Create Campaign</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label>Campaign Name</Label>
-                <Input
-                  value={newCampaign.name}
-                  onChange={(e) => setNewCampaign({ ...newCampaign, name: e.target.value })}
-                  placeholder="e.g., Q3 Alberta GC Outreach"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Track</Label>
-                <Select
-                  value={newCampaign.track}
-                  onValueChange={(v) => setNewCampaign({ ...newCampaign, track: v as any })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="existing_customers">Existing Customers</SelectItem>
-                    <SelectItem value="new_local">New Local</SelectItem>
-                    <SelectItem value="new_national">New National</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Textarea
-                  value={newCampaign.description}
-                  onChange={(e) => setNewCampaign({ ...newCampaign, description: e.target.value })}
-                  placeholder="Brief description of this campaign..."
-                  rows={3}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>From Name</Label>
-                  <Input
-                    value={newCampaign.fromName}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, fromName: e.target.value })}
-                    placeholder="Rob McMullen"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>From Email</Label>
-                  <Input
-                    value={newCampaign.fromEmail}
-                    onChange={(e) => setNewCampaign({ ...newCampaign, fromEmail: e.target.value })}
-                    placeholder="rob@outreach-fenceline.ca"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Sending Domain</Label>
-                <Input
-                  value={newCampaign.sendingDomain}
-                  onChange={(e) => setNewCampaign({ ...newCampaign, sendingDomain: e.target.value })}
-                  placeholder="outreach-fenceline.ca (NOT fenceline.ca)"
-                />
-                <p className="text-xs text-muted-foreground">Must be isolated from primary domain fenceline.ca</p>
-              </div>
-              <Button
-                onClick={() => createCampaign.mutate(newCampaign)}
-                disabled={!newCampaign.name || createCampaign.isPending}
-                className="w-full"
-              >
-                Create Campaign
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+    <div>
+      <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Campaigns</h1>
+      <p className="text-[14px] text-[#777] mt-1.5">Launch and manage outreach sequences</p>
+      <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
+        <p className="text-[13px] text-[#444] leading-relaxed">Campaigns combine a segment, a template, and a sender profile into a scheduled outreach sequence. Emails are sent at human pace through an isolated outreach domain — your primary fenceline.ca is never used and never at risk.</p>
       </div>
-
-      {/* Track Tabs */}
-      <Tabs value={filterTrack} onValueChange={setFilterTrack}>
-        <TabsList>
-          <TabsTrigger value="all">All Tracks</TabsTrigger>
-          <TabsTrigger value="existing_customers">Existing Customers</TabsTrigger>
-          <TabsTrigger value="new_local">New Local</TabsTrigger>
-          <TabsTrigger value="new_national">New National</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Campaign Cards */}
-      {campaigns.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <Mail className="h-10 w-10 text-muted-foreground/40" />
-              <p className="text-muted-foreground">No campaigns yet. Create your first outreach campaign to get started.</p>
-            </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {campaigns.map((campaign) => {
-            const StatusIcon = statusIcons[campaign.status] || Clock;
-            return (
-              <Card
-                key={campaign.id}
-                className="cursor-pointer hover:shadow-md transition-all hover:border-primary/20"
-                onClick={() => setLocation(`/campaigns/${campaign.id}`)}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-base line-clamp-1">{campaign.name}</CardTitle>
-                    <Badge variant="outline" className={`text-xs shrink-0 ${trackColors[campaign.track]}`}>
-                      {trackLabels[campaign.track]}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {campaign.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">{campaign.description}</p>
-                  )}
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <StatusIcon className="h-3.5 w-3.5" />
-                      <span className="capitalize">{campaign.status}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" /> {campaign.totalLeads}
-                      </span>
-                      <span>{campaign.sentCount} sent</span>
-                    </div>
-                  </div>
-                  {(campaign.sentCount ?? 0) > 0 && (
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1 border-t">
-                      <span>Opens: {campaign.openCount}</span>
-                      <span>Clicks: {campaign.clickCount}</span>
-                      <span>Replies: {campaign.replyCount}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+      {/* Protection Card */}
+      <div className="border-2 border-[#3d6b50] bg-[#f4f7f5] rounded-xl p-6 mb-5">
+        <div className="flex items-center gap-3 mb-4">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3d6b50" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/></svg>
+          <div>
+            <h3 className="text-[18px] font-bold">Sender Reputation Protection</h3>
+            <p className="text-[13px] text-[#2d5a4e] mt-0.5">Your domain stays clean — outreach never touches your primary email infrastructure</p>
+          </div>
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="p-4 bg-white rounded-lg border border-[#e8e8ee]">
+            <div className="text-[14px] font-semibold mb-2">Sending Domain</div>
+            <div className="p-2.5 bg-[#f8f9fb] rounded-md mb-2"><span className="font-mono text-[13px]">outreach-fenceline.ca</span> <span className="badge-green">Warmed</span></div>
+            <p className="text-[12px] text-[#888]">SPF, DKIM, and DMARC configured. Warm-up runs 14 days before outreach.</p>
+          </div>
+          <div className="p-4 bg-white rounded-lg border border-[#e8e8ee]">
+            <div className="text-[14px] font-semibold mb-2">Primary Domain</div>
+            <div className="p-2.5 bg-[#f8f9fb] rounded-md mb-2"><span className="font-mono text-[13px]">fenceline.ca</span> <span className="badge-blue">Protected</span></div>
+            <p className="text-[12px] text-[#888]">Never used for outreach. Business communications fully isolated.</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-3.5 bg-white rounded-lg border border-[#e8e8ee]"><div className="text-[13px] font-semibold mb-1">Human-Pace Sending</div><div className="text-[12px] text-[#888]">3-8 minute randomized delays.</div></div>
+          <div className="p-3.5 bg-white rounded-lg border border-[#e8e8ee]"><div className="text-[13px] font-semibold mb-1">CASL Compliance</div><div className="text-[12px] text-[#888]">Auto unsubscribe links, consent tracking.</div></div>
+          <div className="p-3.5 bg-white rounded-lg border border-[#e8e8ee]"><div className="text-[13px] font-semibold mb-1">Volume Controls</div><div className="text-[12px] text-[#888]">20 emails/day, scale to 50 after warm-up.</div></div>
+        </div>
+      </div>
+      {/* Active Campaigns */}
+      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6">
+        <div className="flex justify-between items-center mb-4">
+          <div><h3 className="text-[16px] font-bold text-[#1a4750]">Active Campaigns</h3><p className="text-[13px] text-[#888]">2 campaigns running</p></div>
+          <button className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold">+ New Campaign</button>
+        </div>
+        <div className="p-4 border border-[#e8e8ee] rounded-xl mb-3">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3"><div className="w-1 h-10 rounded bg-[#10b981]" /><div><div className="text-[15px] font-semibold">Fence Sales — Existing Customers AB</div><div className="text-[13px] text-[#888] mt-0.5">Template: Existing Customer · Sender: Rob McMullen</div></div></div>
+            <span className="badge-green">Active</span>
+          </div>
+          <div className="flex gap-6 mt-4 ml-4">
+            <div><div className="text-[11px] font-semibold text-[#888]">Sent</div><div className="text-[16px] font-bold">46 / 46</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Opened</div><div className="text-[16px] font-bold">38%</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Replied</div><div className="text-[16px] font-bold">4</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">1</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">10/day</div></div>
+          </div>
+        </div>
+        <div className="p-4 border border-[#e8e8ee] rounded-xl">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3"><div className="w-1 h-10 rounded bg-[#f59e0b]" /><div><div className="text-[15px] font-semibold">Fence Sales — New National (Ontario/BC)</div><div className="text-[13px] text-[#888] mt-0.5">Template: New National · Sender: Rob McMullen</div></div></div>
+            <span className="badge-amber">Sending</span>
+          </div>
+          <div className="flex gap-6 mt-4 ml-4">
+            <div><div className="text-[11px] font-semibold text-[#888]">Sent</div><div className="text-[16px] font-bold">37 / 89</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Opened</div><div className="text-[16px] font-bold">29%</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Replied</div><div className="text-[16px] font-bold">2</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">1</div></div>
+            <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">8/day</div></div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
