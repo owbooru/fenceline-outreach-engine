@@ -1,26 +1,35 @@
--- CASL Compliance Triggers
--- consent_events must be append-only (no UPDATE, no DELETE)
--- leads bounce auto-suppress: when verificationStatus changes to 'bounced', insert into unsubscribes
+-- ============================================================
+-- CASL COMPLIANCE TRIGGERS — REFERENCE COPY
+--
+-- This file is NOT executed by the application.
+--
+-- The authoritative definitions live in server/startupChecks.ts,
+-- which creates these triggers automatically on startup when the
+-- database engine is MySQL or MariaDB.
+--
+-- This file exists so the trigger logic can be read and reviewed
+-- without reading application code, and so it can be applied by
+-- hand if ever needed.
+--
+-- IF YOU CHANGE A TRIGGER, CHANGE IT IN BOTH PLACES.
+--
+-- Engine note: requires MySQL or MariaDB. TiDB does not support
+-- BEFORE triggers with SIGNAL. On TiDB these are not applied and
+-- enforcement is application-level only.
+-- ============================================================
 
--- Note: TiDB (used in Manus hosting) does not support BEFORE triggers with SIGNAL.
--- These triggers are for MySQL/MariaDB deployment on the VPS.
--- On TiDB, enforcement is application-level via assertSendable() in server/caslCompliance.ts.
-
---> statement-breakpoint
 CREATE TRIGGER consent_events_no_update
 BEFORE UPDATE ON consent_events
 FOR EACH ROW
 SIGNAL SQLSTATE '45000'
 SET MESSAGE_TEXT = 'consent_events is append-only';
 
---> statement-breakpoint
 CREATE TRIGGER consent_events_no_delete
 BEFORE DELETE ON consent_events
 FOR EACH ROW
 SIGNAL SQLSTATE '45000'
 SET MESSAGE_TEXT = 'consent_events is append-only';
 
---> statement-breakpoint
 CREATE TRIGGER leads_bounce_suppress
 AFTER UPDATE ON leads
 FOR EACH ROW

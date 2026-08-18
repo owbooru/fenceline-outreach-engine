@@ -9,6 +9,42 @@
 import { sql } from "drizzle-orm";
 import { getDb } from "./db";
 
+// ─── Trigger definitions (single source of truth for the startup code) ──────
+// The reference SQL file at triggers/casl_triggers.sql must match these.
+// A drift test (server/triggerDrift.test.ts) enforces agreement.
+
+export const TRIGGER_NAMES = {
+  CONSENT_NO_UPDATE: "consent_events_no_update",
+  CONSENT_NO_DELETE: "consent_events_no_delete",
+  BOUNCE_SUPPRESS: "leads_bounce_suppress",
+} as const;
+
+export const TRIGGER_DEFINITIONS: Record<string, string> = {
+  [TRIGGER_NAMES.CONSENT_NO_UPDATE]: `CREATE TRIGGER consent_events_no_update
+BEFORE UPDATE ON consent_events
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'consent_events is append-only'`,
+
+  [TRIGGER_NAMES.CONSENT_NO_DELETE]: `CREATE TRIGGER consent_events_no_delete
+BEFORE DELETE ON consent_events
+FOR EACH ROW
+SIGNAL SQLSTATE '45000'
+SET MESSAGE_TEXT = 'consent_events is append-only'`,
+
+  [TRIGGER_NAMES.BOUNCE_SUPPRESS]: `CREATE TRIGGER leads_bounce_suppress
+AFTER UPDATE ON leads
+FOR EACH ROW
+BEGIN
+  IF NEW.verificationStatus = 'bounced'
+     AND OLD.verificationStatus <> 'bounced'
+     AND NEW.email IS NOT NULL THEN
+    INSERT IGNORE INTO unsubscribes (email, leadId, reason, unsubscribedAt)
+    VALUES (LOWER(NEW.email), NEW.id, 'hard bounce', NOW());
+  END IF;
+END`,
+};
+
 // ─── Compliance state (read by health endpoint) ─────────────────────────────
 export interface ComplianceState {
   databaseEngine: string;
@@ -132,7 +168,7 @@ export async function runStartupChecks(): Promise<void> {
 
     // Check which triggers exist
     const triggersResult = await db.execute(
-      sql`SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME IN ('consent_events_no_update', 'consent_events_no_delete', 'leads_bounce_suppress')`
+      sql.raw(`SELECT TRIGGER_NAME FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = DATABASE() AND TRIGGER_NAME IN ('${TRIGGER_NAMES.CONSENT_NO_UPDATE}', '${TRIGGER_NAMES.CONSENT_NO_DELETE}', '${TRIGGER_NAMES.BOUNCE_SUPPRESS}')`)
     );
     const existingTriggers = new Set<string>();
     const rows = (triggersResult as any)[0] || (triggersResult as any).rows || [];
@@ -141,7 +177,7 @@ export async function runStartupChecks(): Promise<void> {
       if (name) existingTriggers.add(name);
     }
 
-    const requiredTriggers = ["consent_events_no_update", "consent_events_no_delete", "leads_bounce_suppress"];
+    const requiredTriggers = Object.values(TRIGGER_NAMES);
     const missing = requiredTriggers.filter(t => !existingTriggers.has(t));
 
     if (missing.length === 0) {
@@ -154,40 +190,11 @@ export async function runStartupChecks(): Promise<void> {
     console.log(`[Startup] Creating missing triggers: ${missing.join(", ")}...`);
 
     // Create missing triggers idempotently
-    if (missing.includes("consent_events_no_update")) {
-      await db.execute(sql.raw(`
-        CREATE TRIGGER consent_events_no_update
-        BEFORE UPDATE ON consent_events
-        FOR EACH ROW
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'consent_events is append-only'
-      `));
-    }
-
-    if (missing.includes("consent_events_no_delete")) {
-      await db.execute(sql.raw(`
-        CREATE TRIGGER consent_events_no_delete
-        BEFORE DELETE ON consent_events
-        FOR EACH ROW
-        SIGNAL SQLSTATE '45000'
-        SET MESSAGE_TEXT = 'consent_events is append-only'
-      `));
-    }
-
-    if (missing.includes("leads_bounce_suppress")) {
-      await db.execute(sql.raw(`
-        CREATE TRIGGER leads_bounce_suppress
-        AFTER UPDATE ON leads
-        FOR EACH ROW
-        BEGIN
-          IF NEW.verificationStatus = 'bounced'
-             AND OLD.verificationStatus <> 'bounced'
-             AND NEW.email IS NOT NULL THEN
-            INSERT IGNORE INTO unsubscribes (email, leadId, reason, unsubscribedAt)
-            VALUES (LOWER(NEW.email), NEW.id, 'hard bounce', NOW());
-          END IF;
-        END
-      `));
+    for (const triggerName of missing) {
+      const definition = TRIGGER_DEFINITIONS[triggerName];
+      if (definition) {
+        await db.execute(sql.raw(definition));
+      }
     }
 
     console.log("[Startup] ✓ Compliance triggers created successfully.");
