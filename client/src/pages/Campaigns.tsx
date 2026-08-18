@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 /** Per-campaign CASL sendable count indicator */
 function SendableCount({ campaignId }: { campaignId: number }) {
-  const query = (trpc as any).consent?.sendableCount?.useQuery?.({ campaignId }) || { data: null, isLoading: false };
+  const query = trpc.consent.sendableCount.useQuery({ campaignId });
   if (query.isLoading || !query.data) return null;
   const { total, sendable, excluded, reasons } = query.data;
   if (total === 0) return null;
@@ -45,23 +45,23 @@ export default function Campaigns() {
   const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); } });
   const updateCampaign = trpc.campaigns.update.useMutation({ onSuccess: () => refetch() });
   const enrollLeads = trpc.campaigns.enrollLeads.useMutation({
-    onSuccess: (data: any) => {
+    onSuccess: (data) => {
       toast.success(`Enrolled ${data.enrolled} leads in campaign`);
       setEnrollCampaignId(null);
       setSelectedLeadIds([]);
       refetch();
     },
-    onError: (err: any) => toast.error(`Enroll failed: ${err.message}`),
+    onError: (err) => toast.error(`Enroll failed: ${err.message}`),
   });
   const unenrollLead = trpc.campaigns.unenrollLead.useMutation({
     onSuccess: () => { toast.success("Lead removed from campaign"); refetch(); },
-    onError: (err: any) => toast.error(`Remove failed: ${err.message}`),
+    onError: (err) => toast.error(`Remove failed: ${err.message}`),
   });
   const updateLead = trpc.leads.update.useMutation({
     onSuccess: () => { toast.success("Email updated — lead re-queued for sending"); setResendLeadId(null); setResendEmail(""); },
-    onError: (err: any) => toast.error(`Update failed: ${err.message}`),
+    onError: (err) => toast.error(`Update failed: ${err.message}`),
   });
-  const emailStatus = (trpc as any).email?.status?.useQuery?.() || { data: null };
+  const emailStatus = trpc.email.status.useQuery();
 
   const handleRemoveFromCampaign = (campaignLeadId: number) => {
     if (confirm("Remove this lead from the campaign?")) {
@@ -73,17 +73,17 @@ export default function Campaigns() {
     if (!resendEmail) return;
     updateLead.mutate({ id: leadId, data: { email: resendEmail } });
   };
-  const sendStep = (trpc as any).email?.sendStep?.useMutation?.({
-    onSuccess: (data: any) => {
+  const sendStep = trpc.email.sendStep.useMutation({
+    onSuccess: (data) => {
       toast.success(`Queued ${data.queued} emails for sending (${data.skipped} skipped). Sending at human pace — 3-8 min between each.`);
       setSendingCampaignId(null);
       refetch();
     },
-    onError: (err: any) => {
+    onError: (err) => {
       toast.error(`Send failed: ${err.message}`);
       setSendingCampaignId(null);
     }
-  }) || { mutate: () => toast.error("Email sending not available"), isPending: false };
+  });
 
   const handleSend = (campaignId: number) => {
     // For POC, send step 1 of the campaign

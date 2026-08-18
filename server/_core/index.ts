@@ -9,6 +9,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerTrackingRoutes } from "../trackingRoutes";
+import { registerAccessGate, accessGateMiddleware } from "../accessGate";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -39,6 +40,10 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Tracking routes (open pixel, click redirect, unsubscribe)
   registerTrackingRoutes(app);
+  // Access gate: password login/logout/status endpoints
+  registerAccessGate(app);
+  // Access gate middleware: protects /api/trpc routes with signed session cookie
+  app.use(accessGateMiddleware());
   // tRPC API
   app.use(
     "/api/trpc",

@@ -187,7 +187,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         await db.enrollLeadsInCampaign(input.campaignId, input.leadIds);
-        return { success: true };
+        return { success: true, enrolled: input.leadIds.length };
       }),
 
     getLeads: publicProcedure

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -29,29 +30,68 @@ const menuItems = [
 ];
 
 const AUTH_KEY = "fenceline-auth";
-const CORRECT_PASSWORD = "Fenceline!";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(() => localStorage.getItem(AUTH_KEY) === "true");
+  const [isChecking, setIsChecking] = useState(true);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [collapsed, setCollapsed] = useState(false);
   const [location, setLocation] = useLocation();
 
-  const handleLogin = () => {
-    if (password === CORRECT_PASSWORD) {
-      setIsAuthenticated(true);
-      localStorage.setItem(AUTH_KEY, "true");
-      setError("");
-    } else {
-      setError("Incorrect password. Please try again.");
+  // On mount, verify the session cookie is still valid server-side
+  useEffect(() => {
+    fetch("/api/access/status")
+      .then(r => r.json())
+      .then(data => {
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+          localStorage.setItem(AUTH_KEY, "true");
+        } else {
+          setIsAuthenticated(false);
+          localStorage.removeItem(AUTH_KEY);
+        }
+      })
+      .catch(() => {
+        // If status check fails, keep local state as-is
+      })
+      .finally(() => setIsChecking(false));
+  }, []);
+
+  const handleLogin = async () => {
+    setError("");
+    try {
+      const res = await fetch("/api/access/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setIsAuthenticated(true);
+        localStorage.setItem(AUTH_KEY, "true");
+        setPassword("");
+      } else {
+        setError(data.error || "Incorrect password. Please try again.");
+      }
+    } catch {
+      setError("Connection error. Please try again.");
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch("/api/access/logout", { method: "POST" }).catch(() => {});
     setIsAuthenticated(false);
     localStorage.removeItem(AUTH_KEY);
   };
+
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f8f9fb]">
+        <div className="h-8 w-8 border-2 border-[#1a4750] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

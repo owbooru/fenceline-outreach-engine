@@ -160,3 +160,8 @@
 - [x] Add consent status badges to Segment/leads list page
 - [x] Add pre-send excluded-recipient count to Campaigns page
 - [x] Add read-only Compliance page showing consent_events log
+
+## DEPLOY.md & Security
+- [x] Add CASL Compliance section to DEPLOY.md (env vars, migration 0005, verification, consequences)
+- [x] Move app password from client-side to server-side enforcement (env var + JWT session)
+- [x] Update DEPLOY.md to remove frontend password edit instruction

@@ -5,7 +5,7 @@ import { trpc } from "@/lib/trpc";
 export default function Home() {
   const [, setLocation] = useLocation();
   const leadsQuery = trpc.leads.list.useQuery({});
-  const campaignsQuery = trpc.campaigns.list.useQuery({} as any);
+  const campaignsQuery = trpc.campaigns.list.useQuery();
   const activityQuery = trpc.activity.list.useQuery({});
   const totalLeads = leadsQuery.data?.length || 0;
   const totalCampaigns = campaignsQuery.data?.length || 0;

@@ -39,7 +39,27 @@ PORT=3000
 DATABASE_URL=mysql://user:password@localhost:3306/fenceline
 JWT_SECRET=your-random-secret-here-minimum-32-chars
 
-# Optional: Add these when you have API keys
+# ─── SMTP (required for email sending) ────────────────────────────────────────
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-gmail@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM_NAME=Rob McMullen
+SMTP_FROM_EMAIL=your-gmail@gmail.com
+APP_URL=https://your-domain.com
+
+# ─── CASL Sender Identification (required before sending — legal obligation) ──
+CASL_SENDER_NAME=Rob McMullen
+CASL_BUSINESS_NAME=FenceLine
+CASL_MAILING_ADDRESS=Edmonton, AB, Canada
+CASL_CONTACT_PHONE=780-555-0000
+CASL_CONTACT_EMAIL=rob@fenceline.ca
+CASL_CONTACT_WEB=https://fenceline.ca
+
+# ─── App Access Password ──────────────────────────────────────────────────────
+APP_ACCESS_PASSWORD=Fenceline!
+
+# ─── Optional: Add these when you have API keys ──────────────────────────────
 # HUNTER_API_KEY=your-hunter-key
 # APOLLO_API_KEY=your-apollo-key
 # SERPAPI_KEY=your-serpapi-key
@@ -150,6 +170,52 @@ cd /opt/fenceline-lead-engine
 npx drizzle-kit generate && npx drizzle-kit migrate
 ```
 
+## CASL Compliance — Required Before Sending
+
+Canada's Anti-Spam Legislation (CASL) requires valid consent and sender identification in every commercial electronic message. The application enforces this through `assertSendable()` in `server/caslCompliance.ts`, but the deployment must also be configured correctly.
+
+### 1. Required Environment Variables
+
+The following must be set in `.env` or the app cannot legally send. They are injected into the unsubscribe footer of every outgoing email:
+
+```
+CASL_SENDER_NAME=Rob McMullen
+CASL_BUSINESS_NAME=FenceLine
+CASL_MAILING_ADDRESS=Edmonton, AB, Canada
+CASL_CONTACT_PHONE=780-555-0000
+CASL_CONTACT_EMAIL=rob@fenceline.ca
+CASL_CONTACT_WEB=https://fenceline.ca
+```
+
+If these are missing, the CASL footer will be incomplete and the message will not comply with the legislation.
+
+### 2. Apply Migration 0005 (Triggers)
+
+`drizzle-kit migrate` alone is **not sufficient**. Migration `0005_casl_triggers.sql` contains `BEFORE` triggers with `SIGNAL` statements that Drizzle's migration runner does not handle. You must apply it manually:
+
+```bash
+mysql -u fenceline -p fenceline < drizzle/0005_casl_triggers.sql
+```
+
+Then verify the three triggers exist:
+
+```bash
+mysql -u fenceline -p -e "SHOW TRIGGERS FROM fenceline;"
+```
+
+**Expected output must include:**
+- `consent_events_no_update` — prevents UPDATE on consent_events
+- `consent_events_no_delete` — prevents DELETE on consent_events
+- `leads_bounce_suppress` — auto-inserts into unsubscribes when a lead bounces
+
+### 3. Consequence if Migration 0005 Is Not Applied
+
+If migration 0005 has not been applied, the append-only guarantee on `consent_events` and the bounce auto-suppression trigger **do not exist at the database level**. The compliance layer is application-enforced only — meaning anyone with direct database access could modify or delete consent audit records, and bounced leads are only suppressed if the application code path runs (not if the database is modified directly).
+
+### 4. Engine Requirement
+
+MariaDB or MySQL supports these triggers. TiDB does not. If the production database is TiDB, migration 0005 will fail and that must be known rather than assumed. The VPS deployment guide above installs MariaDB, which is the intended production engine.
+
 ## Updating the App
 
 ```bash
@@ -193,10 +259,12 @@ docker run ... --shm-size=2g ...
 
 ## Security
 
-- The app password is set in the frontend code (currently "Fenceline!")
-- Change it in `client/src/components/DashboardLayout.tsx`
-- For production, consider adding proper authentication
-- Keep your .env file secure (chmod 600)
+- The app password is enforced **server-side** via the `APP_ACCESS_PASSWORD` environment variable
+- The client submits the password to `POST /api/access/login`; the server validates it and issues a signed JWT session cookie (`fenceline_access`)
+- All `/api/trpc` routes are protected by this cookie — unauthenticated requests receive HTTP 401
+- Tracking routes (`/api/track/*`) remain public so open pixels, click redirects, and unsubscribe pages work without authentication
+- To change the password, update `APP_ACCESS_PASSWORD` in `.env` and restart the app. Do not edit frontend code.
+- Keep your `.env` file secure (`chmod 600`)
 - The app never sends from fenceline.ca — outreach uses isolated domains only
 
 ## Monitoring
@@ -210,4 +278,3 @@ pm2 logs fenceline-lead-engine
 sudo systemctl status nginx
 sudo tail -f /var/log/nginx/access.log
 ```
-
