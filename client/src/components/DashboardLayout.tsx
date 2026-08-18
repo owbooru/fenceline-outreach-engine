@@ -14,6 +14,7 @@ import {
   LogOut,
   ChevronsLeft,
   ChevronsRight,
+  ShieldCheck,
 } from "lucide-react";
 
 const menuItems = [
@@ -23,6 +24,7 @@ const menuItems = [
   { icon: FileText, label: "Templates", path: "/templates" },
   { icon: Send, label: "Campaigns", path: "/campaigns" },
   { icon: Activity, label: "Tracking", path: "/tracking" },
+  { icon: ShieldCheck, label: "Compliance", path: "/compliance" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 

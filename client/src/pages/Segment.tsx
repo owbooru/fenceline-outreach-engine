@@ -145,6 +145,7 @@ export default function Segment() {
                   <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Region</th>
                   <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Email Status</th>
                   <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Segment</th>
+                  <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Consent</th>
                   <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Source</th>
                 </tr>
               </thead>
@@ -157,6 +158,17 @@ export default function Segment() {
                     <td className="py-3 px-4 text-[14px]">{lead.city}</td>
                     <td className="py-3 px-4">{lead.isVerified ? <span className="badge-green">Verified</span> : <span className="badge-amber">Pattern</span>}</td>
                     <td className="py-3 px-4">{segmentBadge(lead.computedSegment)}</td>
+                    <td className="py-3 px-4">
+                      {(lead as any).consentBasis === "none" || !(lead as any).consentBasis ? (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">No Consent</span>
+                      ) : (lead as any).consentExpiresAt && new Date((lead as any).consentExpiresAt) < new Date() ? (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 font-semibold">Expired</span>
+                      ) : (
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">
+                          {((lead as any).consentBasis || "").replace(/_/g, " ").replace(/implied /,"Impl. ")}
+                        </span>
+                      )}
+                    </td>
                     <td className="py-3 px-4 text-[14px] text-[#888]">{lead.source || "Web Scrape"}</td>
                   </tr>
                 ))}

@@ -1,7 +1,26 @@
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Loader2, Send, CheckCircle, AlertCircle, UserPlus, ChevronDown, ChevronUp, Mail, Clock, CheckCircle2, X, RefreshCw } from "lucide-react";
+import { Loader2, Send, CheckCircle, AlertCircle, UserPlus, ChevronDown, ChevronUp, Mail, Clock, CheckCircle2, X, RefreshCw, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
+
+/** Per-campaign CASL sendable count indicator */
+function SendableCount({ campaignId }: { campaignId: number }) {
+  const query = (trpc as any).consent?.sendableCount?.useQuery?.({ campaignId }) || { data: null, isLoading: false };
+  if (query.isLoading || !query.data) return null;
+  const { total, sendable, excluded, reasons } = query.data;
+  if (total === 0) return null;
+  return (
+    <div className="flex items-center gap-2 mt-3 ml-4 px-3 py-2 bg-[#f8f9fb] rounded-lg border border-[#e8e8ee]">
+      <ShieldAlert className="h-4 w-4 text-[#1a4750] shrink-0" />
+      <span className="text-[12px] text-[#555]">
+        <strong className="text-[#1a4750]">{sendable}</strong> of {total} enrolled leads are sendable
+        {excluded > 0 && (
+          <span className="text-red-600 font-semibold"> ({excluded} excluded: {reasons.join(", ")})</span>
+        )}
+      </span>
+    </div>
+  );
+}
 
 export default function Campaigns() {
   const [showForm, setShowForm] = useState(false);
@@ -239,6 +258,8 @@ export default function Campaigns() {
                   <div><div className="text-[11px] font-semibold text-[#888]">Bounced</div><div className="text-[16px] font-bold">{c.bounceCount || 0}</div></div>
                   <div><div className="text-[11px] font-semibold text-[#888]">Pace</div><div className="text-[16px] font-bold">10/day</div></div>
                 </div>
+                {/* CASL Pre-send excluded count — always visible on each campaign card */}
+                <SendableCount campaignId={c.id} />
                 <button onClick={() => setExpandedCampaignId(expandedCampaignId === c.id ? null : c.id)} className="flex items-center gap-1 mt-3 ml-4 text-[12px] font-semibold text-[#1a4750] hover:text-[#2a5a65] transition-colors">
                   {expandedCampaignId === c.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                   View Enrolled Leads

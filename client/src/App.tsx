@@ -12,6 +12,7 @@ import Campaigns from "./pages/Campaigns";
 import Tracking from "./pages/Tracking";
 import SettingsPage from "./pages/Settings";
 import DashboardLayout from "./components/DashboardLayout";
+import Compliance from "./pages/Compliance";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
       <Route path={"/campaigns"} component={Campaigns} />
       <Route path={"/tracking"} component={Tracking} />
       <Route path={"/settings"} component={SettingsPage} />
+      <Route path={"/compliance"} component={Compliance} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
