@@ -141,3 +141,13 @@
 - [x] Remove from Campaign button on each enrolled lead
 - [x] Enrolled count in campaign card header (X enrolled, Y contacted, Z pending)
 - [x] Resend option for bounced leads with email update
+
+## CASL Compliance Layer
+- [x] Change 1: Add consent fields to leads table (consentBasis, consentSource, consentObtainedAt, consentExpiresAt)
+- [x] Change 2: Add consent_events append-only audit table with triggers
+- [x] Change 3: Gate send path with assertSendable function
+- [x] Change 4: Fix fail-open behaviour (fail closed when DB unavailable)
+- [x] Change 5: Auto-suppress on bounce (application-level, TiDB doesn't support triggers)
+- [x] Change 6: Required sender identification in every message (configurable via env vars)
+- [x] Change 7: Surface consent in UI (Find/CSV import requires consent basis selection)
+- [x] Change 8: Migrations and tests (26 tests passing)

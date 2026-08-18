@@ -41,6 +41,17 @@ export const leads = mysqlTable("leads", {
   lastContactedAt: timestamp("lastContactedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  // CASL consent fields
+  consentBasis: mysqlEnum("consentBasis", [
+    "express",
+    "implied_business_relationship",
+    "implied_inquiry",
+    "implied_published",
+    "none"
+  ]).default("none").notNull(),
+  consentSource: text("consentSource"),
+  consentObtainedAt: timestamp("consentObtainedAt"),
+  consentExpiresAt: timestamp("consentExpiresAt"),
 });
 
 export type Lead = typeof leads.$inferSelect;
@@ -213,3 +224,24 @@ export const unsubscribes = mysqlTable("unsubscribes", {
 
 export type Unsubscribe = typeof unsubscribes.$inferSelect;
 export type InsertUnsubscribe = typeof unsubscribes.$inferInsert;
+
+// ─── Consent Events (append-only audit trail) ───────────────────────────────
+export const consentEvents = mysqlTable("consent_events", {
+  id: int("id").autoincrement().primaryKey(),
+  leadId: int("leadId").notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  eventType: mysqlEnum("eventType", [
+    "granted", "withdrawn", "expired", "bounced", "imported"
+  ]).notNull(),
+  consentBasis: mysqlEnum("consentBasis_ce", [
+    "express", "implied_business_relationship",
+    "implied_inquiry", "implied_published", "none"
+  ]),
+  source: text("source"),
+  evidence: text("evidence"),
+  recordedAt: timestamp("recordedAt").defaultNow().notNull(),
+  recordedBy: varchar("recordedBy", { length: 320 }),
+});
+
+export type ConsentEvent = typeof consentEvents.$inferSelect;
+export type InsertConsentEvent = typeof consentEvents.$inferInsert;

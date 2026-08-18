@@ -84,12 +84,27 @@ export function wrapLinksForTracking(html: string, leadId: number, campaignId: n
 // ─── CASL Footer ─────────────────────────────────────────────────────────────
 export function addCaslFooter(html: string, leadId: number): string {
   const baseUrl = process.env.APP_URL || "https://fenceline.geekcertified.com";
+  const senderName = process.env.CASL_SENDER_NAME || "FenceLine";
+  const businessName = process.env.CASL_BUSINESS_NAME || "FenceLine Rentals Ltd.";
+  const mailingAddress = process.env.CASL_MAILING_ADDRESS || "Edmonton, AB, Canada";
+  const contactPhone = process.env.CASL_CONTACT_PHONE || "";
+  const contactEmail = process.env.CASL_CONTACT_EMAIL || "";
+  const contactWeb = process.env.CASL_CONTACT_WEB || "https://fenceline.ca";
+
+  const contactLine = [
+    contactPhone ? `Phone: ${contactPhone}` : "",
+    contactEmail ? `Email: ${contactEmail}` : "",
+    contactWeb ? `Web: <a href="${contactWeb}" style="color:#666">${contactWeb}</a>` : "",
+  ].filter(Boolean).join(" | ");
+
   const footer = `
 <br/><hr style="border:none;border-top:1px solid #eee;margin:20px 0"/>
 <p style="font-size:11px;color:#999;line-height:1.4">
-This email was sent by FenceLine regarding fencing services.
-If you no longer wish to receive these emails, <a href="${baseUrl}/api/track/unsubscribe?lid=${leadId}" style="color:#666">click here to unsubscribe</a>.
-<br/>FenceLine, Edmonton, AB, Canada.
+This message was sent by ${senderName} on behalf of ${businessName}.
+<br/>${mailingAddress}
+<br/>${contactLine}
+<br/>If you no longer wish to receive these emails, <a href="${baseUrl}/api/track/unsubscribe?lid=${leadId}" style="color:#666">click here to unsubscribe</a>.
+This unsubscribe link will remain active for at least 60 days.
 </p>`;
   return html + footer;
 }
@@ -110,9 +125,19 @@ export async function sendEmail(options: {
   }
 
   // Check unsubscribe list
-  const unsub = await db.isUnsubscribed(options.to);
-  if (unsub) {
-    return { success: false, error: "Contact is unsubscribed" };
+  // CASL compliance gate — assertSendable checks consent, expiry, bounce, and unsubscribe
+  const database = await getDb();
+  if (!database) {
+    return { success: false, error: "[CASL] Database unavailable — send blocked (fail-closed)." };
+  }
+  const [lead] = await database.select().from(leadsTable).where(eq(leadsTable.id, options.leadId)).limit(1);
+  if (!lead) {
+    return { success: false, error: `Lead #${options.leadId} not found.` };
+  }
+  try {
+    await assertSendable(lead);
+  } catch (err: any) {
+    return { success: false, error: err.message };
   }
 
   // Add tracking and CASL footer
@@ -266,8 +291,11 @@ export async function sendCampaignStep(campaignId: number, stepId: number): Prom
     }
 
     // Check unsubscribe
-    const unsub = await db.isUnsubscribed(lead.email);
-    if (unsub) {
+    // CASL compliance gate
+    try {
+      await assertSendable(lead);
+    } catch (err: any) {
+      console.log(`[EmailSender] Skipping lead #${lead.id}: ${err.message}`);
       skipped++;
       continue;
     }
@@ -294,3 +322,5 @@ export async function sendCampaignStep(campaignId: number, stepId: number): Prom
 
   return { queued, skipped, errors };
 }
+import { assertSendable } from "./caslCompliance";
+import { leads as leadsTable } from "../drizzle/schema";

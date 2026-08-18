@@ -111,7 +111,37 @@ export async function createLeadsBulk(leadsData: InsertLead[]) {
 
   const duplicateCount = leadsData.length - newLeads.length;
   if (newLeads.length > 0) {
-    await db.insert(leads).values(newLeads);
+    // Apply consent expiry calculation to each lead
+    const leadsWithConsent = newLeads.map(lead => {
+      const basis = (lead.consentBasis || "none") as ConsentBasis;
+      const obtainedAt = lead.consentObtainedAt || new Date();
+      const expiresAt = calculateConsentExpiry(basis, obtainedAt);
+      return {
+        ...lead,
+        consentBasis: basis,
+        consentObtainedAt: obtainedAt,
+        consentExpiresAt: expiresAt,
+      };
+    });
+    await db.insert(leads).values(leadsWithConsent);
+
+    // Record consent events for each imported lead
+    const insertedLeads = await db.select({ id: leads.id, email: leads.email, consentBasis: leads.consentBasis })
+      .from(leads)
+      .orderBy(desc(leads.id))
+      .limit(leadsWithConsent.length);
+    for (const imported of insertedLeads) {
+      if (imported.email) {
+        await db.insert(consentEvents).values({
+          leadId: imported.id,
+          email: imported.email,
+          eventType: "imported",
+          consentBasis: imported.consentBasis as any,
+          source: "bulk_import",
+          recordedBy: "system",
+        });
+      }
+    }
   }
   // Log the import activity
   await logActivity("leads_imported", `Imported ${newLeads.length} contacts${duplicateCount > 0 ? ` (${duplicateCount} duplicates skipped)` : ""}`, { total: leadsData.length, imported: newLeads.length, duplicates: duplicateCount });
@@ -121,6 +151,30 @@ export async function createLeadsBulk(leadsData: InsertLead[]) {
 export async function updateLead(id: number, data: Partial<InsertLead>) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
+  // If consent basis is being updated, recalculate expiry
+  if (data.consentBasis) {
+    const obtainedAt = data.consentObtainedAt || new Date();
+    data.consentObtainedAt = obtainedAt;
+    data.consentExpiresAt = calculateConsentExpiry(data.consentBasis as ConsentBasis, obtainedAt);
+  }
+  // Auto-suppress on bounce: if verificationStatus is being set to bounced, add to unsubscribes
+  if (data.verificationStatus === "bounced") {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
+    if (lead?.email) {
+      const [existing] = await db.select().from(unsubscribes).where(eq(unsubscribes.email, lead.email.toLowerCase())).limit(1);
+      if (!existing) {
+        await db.insert(unsubscribes).values({ email: lead.email.toLowerCase(), leadId: id, reason: "hard bounce" });
+      }
+      // Record consent event for bounce
+      await db.insert(consentEvents).values({
+        leadId: id,
+        email: lead.email,
+        eventType: "bounced",
+        source: "auto_suppress",
+        recordedBy: "system",
+      });
+    }
+  }
   await db.update(leads).set(data).where(eq(leads.id, id));
 }
 
@@ -353,7 +407,9 @@ export async function getUnsubscribes() {
 
 export async function isUnsubscribed(email: string): Promise<boolean> {
   const db = await getDb();
-  if (!db) return false;
+  if (!db) throw new Error("[CASL Compliance] Database unavailable — cannot verify unsubscribe status. Send blocked.");
   const result = await db.select().from(unsubscribes).where(eq(unsubscribes.email, email.toLowerCase())).limit(1);
   return result.length > 0;
 }
+import { calculateConsentExpiry, type ConsentBasis } from "../shared/consent";
+import { consentEvents } from "../drizzle/schema";

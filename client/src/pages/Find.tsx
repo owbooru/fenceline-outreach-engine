@@ -46,6 +46,7 @@ export default function Find() {
   const [patternCompany, setPatternCompany] = useState("");
   const [patternDomain, setPatternDomain] = useState("");
   const [patternFormat, setPatternFormat] = useState("first.last");
+  const [consentBasis, setConsentBasis] = useState("");
   const [savedPatterns, setSavedPatterns] = useState<{company: string; domain: string; format: string}[]>([
     { company: "AECON", domain: "aecon.com", format: "first.last" },
     { company: "PCL Construction", domain: "pcl.com", format: "flast" },
@@ -134,6 +135,10 @@ export default function Find() {
 
   const importCsv = () => {
     if (csvData.length === 0) return;
+    if (!consentBasis) {
+      alert("CASL Compliance: You must select a consent basis before importing contacts.");
+      return;
+    }
     const leads = csvData.map(r => ({
       firstName: r.name.split(" ")[0] || "",
       lastName: r.name.split(" ").slice(1).join(" ") || "",
@@ -142,6 +147,7 @@ export default function Find() {
       jobTitle: r.role,
       city: r.region,
       source: "linkedin" as const,
+      consentBasis: consentBasis as any,
     }));
     createBulk.mutate({ leads });
   };
@@ -211,6 +217,10 @@ export default function Find() {
 
   const importAll = () => {
     if (results.length === 0) return;
+    if (!consentBasis) {
+      alert("CASL Compliance: You must select a consent basis before importing contacts.");
+      return;
+    }
     const leads = results.map(r => ({
       firstName: r.name.split(" ")[0] || "",
       lastName: r.name.split(" ").slice(1).join(" ") || "",
@@ -219,6 +229,7 @@ export default function Find() {
       jobTitle: r.role,
       city: r.region,
       source: "web_search" as const,
+      consentBasis: consentBasis as any,
     }));
     createBulk.mutate({ leads });
   };
@@ -422,8 +433,25 @@ export default function Find() {
             </div>
           )}
           {results.length > 0 && (
-            <div className="text-center pt-3 text-[13px] text-[#888]">
-              Showing {results.length} contacts · Click "Import All" to move them to Segment
+            <div className="pt-4 border-t border-[#eee] mt-4">
+              <div className="flex items-center gap-3 justify-center mb-3">
+                <label className="text-[13px] font-semibold text-[#555]">CASL Consent Basis:</label>
+                <select value={consentBasis} onChange={e => setConsentBasis(e.target.value)} className="px-3 py-1.5 rounded-lg border border-[#ddd] text-[13px] bg-white">
+                  <option value="">— Select consent basis —</option>
+                  <option value="express">Express Consent</option>
+                  <option value="implied_business_relationship">Implied — Business Relationship (2yr)</option>
+                  <option value="implied_inquiry">Implied — Inquiry (6mo)</option>
+                  <option value="implied_published">Implied — Published Contact</option>
+                </select>
+              </div>
+              <div className="text-center text-[13px] text-[#888]">
+                Showing {results.length} contacts · {!consentBasis && <span className="text-amber-600 font-semibold">Select consent basis to enable import</span>}
+              </div>
+              <div className="text-center mt-2">
+                <button onClick={importAll} disabled={!consentBasis || createBulk.isPending} className="px-5 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold disabled:opacity-40">
+                  {createBulk.isPending ? "Importing..." : `Import All (${results.length})`}
+                </button>
+              </div>
           </div>
          )}
         </div>

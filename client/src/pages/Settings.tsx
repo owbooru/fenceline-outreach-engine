@@ -66,6 +66,39 @@ export default function SettingsPage() {
       <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Settings</h1>
       <p className="text-[14px] text-[#777] mt-1.5">Connect your data sources and configure the lead engine</p>
 
+      {/* CASL Sender Identification */}
+      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-6 mb-6">
+        <h3 className="text-[16px] font-bold text-[#1a4750] mb-2">CASL Sender Identification</h3>
+        <p className="text-[13px] text-[#888] mb-4">Required by CASL in every commercial email. Configure these in your server .env file.</p>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_SENDER_NAME</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Sender's legal name" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_BUSINESS_NAME</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Business being represented" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_MAILING_ADDRESS</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Physical mailing address" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_CONTACT_PHONE</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Working phone number" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_CONTACT_EMAIL</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Contact email address" />
+          </div>
+          <div>
+            <label className="text-[12px] font-semibold text-[#555] block mb-1">CASL_CONTACT_WEB</label>
+            <input type="text" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-[#f8f9fb]" disabled value="Website URL" />
+          </div>
+        </div>
+        <p className="text-[12px] text-amber-600 mt-3">⚠️ All fields must be set in the server .env before sending. Emails without proper identification violate CASL.</p>
+      </div>
+
       {/* Domain Reputation Protection */}
       <div className="mt-6">
         <div className="text-[12px] font-bold text-[#999] uppercase tracking-wider mb-3">Domain Reputation Protection</div>
