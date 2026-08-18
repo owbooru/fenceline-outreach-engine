@@ -1,6 +1,29 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+:root {
+  /* ─── Brand Colours ─────────────────────────────────────────────────────── */
+  --brand-primary:       #1B3A6B;
+  --brand-primary-hover: #2A5490;
+  --brand-primary-tint:  #E8EDF5;
+  --brand-accent:        #F5A623;
+  --brand-accent-hover:  #8B6914;
+  --brand-accent-tint:   #FEF4E2;
+
+  /* ─── Neutrals ─────────────────────────────────────────────────────────── */
+  --neutral-border:      #e8e8ee;
+  --neutral-bg:          #f8f9fb;
+  --neutral-surface-1:   #f4f7f6;
+  --neutral-surface-2:   #f4f4f8;
+  --neutral-surface-3:   #f4f7f5;
+  --neutral-surface-4:   #f8fafb;
+  --neutral-muted-border:#d4ddd8;
+  --neutral-muted-border-2:#c4d8cc;
+
+  /* ─── State Colours ────────────────────────────────────────────────────── */
+  --state-success:       #047857;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -71,10 +94,10 @@
 }
 
 /* Custom badge classes matching the demo */
-.badge-blue { background: #e8f0f0; color: #1a4750; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
-.badge-green { background: #edf3ef; color: #3d6b50; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
-.badge-amber { background: #f5f0e8; color: #8c7355; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
-.badge-gray { background: #f4f4f8; color: #666; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.badge-blue { background: var(--brand-primary-tint); color: var(--brand-primary); display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.badge-green { background: #edf3ef; color: var(--state-success); display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.badge-amber { background: var(--brand-accent-tint); color: var(--brand-accent-hover); display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+.badge-gray { background: var(--neutral-surface-2); color: #666; display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

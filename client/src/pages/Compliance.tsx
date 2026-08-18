@@ -23,50 +23,50 @@ export default function Compliance() {
 
   return (
     <div>
-      <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">CASL Compliance Log</h1>
-      <p className="text-[14px] text-[#777] mt-1.5">Read-only audit trail of all consent events. This log is append-only and cannot be modified.</p>
+      <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--brand-primary)]">CASL Compliance Log</h1>
+      <p className="text-[14px] text-[#6b6b6b] mt-1.5">Read-only audit trail of all consent events. This log is append-only and cannot be modified.</p>
 
-      <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
+      <div className="p-4 bg-[var(--neutral-surface-1)] border border-[var(--neutral-muted-border)] rounded-xl mt-5 mb-5">
         <p className="text-[13px] text-[#555] leading-relaxed">
           Under CASL (Canada's Anti-Spam Legislation), every commercial electronic message requires valid consent. This log records every consent change — grants, withdrawals, expirations, bounces, and imports. It serves as your compliance audit trail.
         </p>
       </div>
 
-      <div className="bg-white rounded-xl border border-[#e8e8ee] p-6">
+      <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-[16px] font-bold text-[#1a4750]">Consent Events</h3>
-          <span className="text-[12px] text-[#888]">{events?.length || 0} events recorded</span>
+          <h3 className="text-[16px] font-bold text-[var(--brand-primary)]">Consent Events</h3>
+          <span className="text-[12px] text-[#6b6b6b]">{events?.length || 0} events recorded</span>
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-[#1a4750]" />
+            <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-primary)]" />
           </div>
         ) : !events || events.length === 0 ? (
-          <div className="text-center py-12 text-[#aaa]">
+          <div className="text-center py-12 text-[#737373]">
             <p className="text-[14px]">No consent events recorded yet. Events will appear here as contacts are imported and consent is tracked.</p>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-[#eee]">
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Date</th>
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Event</th>
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Email</th>
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Consent Basis</th>
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Source</th>
-                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#999] uppercase tracking-wider">Recorded By</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Date</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Event</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Email</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Consent Basis</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Source</th>
+                <th className="text-left py-3 px-4 text-[11px] font-bold text-[#737373] uppercase tracking-wider">Recorded By</th>
               </tr>
             </thead>
             <tbody>
               {events.map((event: any) => (
-                <tr key={event.id} className="border-b border-[#f4f4f8]">
+                <tr key={event.id} className="border-b border-[var(--neutral-surface-2)]">
                   <td className="py-3 px-4 text-[13px] text-[#555]">{formatDate(event.recordedAt)}</td>
                   <td className="py-3 px-4">{eventTypeBadge(event.eventType)}</td>
                   <td className="py-3 px-4 text-[13px] font-mono">{event.email}</td>
                   <td className="py-3 px-4 text-[13px]">{event.consentBasis ? event.consentBasis.replace(/_/g, " ") : "—"}</td>
-                  <td className="py-3 px-4 text-[13px] text-[#888]">{event.source || "—"}</td>
-                  <td className="py-3 px-4 text-[13px] text-[#888]">{event.recordedBy || "system"}</td>
+                  <td className="py-3 px-4 text-[13px] text-[#6b6b6b]">{event.source || "—"}</td>
+                  <td className="py-3 px-4 text-[13px] text-[#6b6b6b]">{event.recordedBy || "system"}</td>
                 </tr>
               ))}
             </tbody>

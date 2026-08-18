@@ -236,19 +236,19 @@ export default function Find() {
 
   return (
     <div>
-      <h1 className="text-[24px] font-extrabold tracking-tight text-[#1a4750]">Find Contacts</h1>
-      <p className="text-[14px] text-[#777] mt-1.5">Source decision-makers from directories, web scraping, and LinkedIn exports</p>
+      <h1 className="text-[24px] font-extrabold tracking-tight text-[var(--brand-primary)]">Find Contacts</h1>
+      <p className="text-[14px] text-[#6b6b6b] mt-1.5">Source decision-makers from directories, web scraping, and LinkedIn exports</p>
 
       {/* Tab Switcher */}
-      <div className="flex gap-1 mt-5 mb-4 bg-[#f4f7f6] p-1 rounded-lg w-fit">
-        <button onClick={() => setActiveTab("search")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "search" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>Search Sources</button>
-        <button onClick={() => setActiveTab("csv")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "csv" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>CSV Import</button>
-        <button onClick={() => setActiveTab("tenders")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "tenders" ? "bg-white text-[#1a4750] shadow-sm" : "text-[#888] hover:text-[#555]"}`}>Tenders &amp; RFPs</button>
+      <div className="flex gap-1 mt-5 mb-4 bg-[var(--neutral-surface-1)] p-1 rounded-lg w-fit">
+        <button onClick={() => setActiveTab("search")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "search" ? "bg-white text-[var(--brand-primary)] shadow-sm" : "text-[#6b6b6b] hover:text-[#555]"}`}>Search Sources</button>
+        <button onClick={() => setActiveTab("csv")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "csv" ? "bg-white text-[var(--brand-primary)] shadow-sm" : "text-[#6b6b6b] hover:text-[#555]"}`}>CSV Import</button>
+        <button onClick={() => setActiveTab("tenders")} className={`px-4 py-2 rounded-md text-[13px] font-semibold transition-colors ${activeTab === "tenders" ? "bg-white text-[var(--brand-primary)] shadow-sm" : "text-[#6b6b6b] hover:text-[#555]"}`}>Tenders &amp; RFPs</button>
       </div>
 
       {/* Info Box */}
       {activeTab === "search" && !searching && !showResults && (
-        <div className="p-4 bg-[#f4f7f6] border border-[#d4ddd8] rounded-xl mt-5 mb-5">
+        <div className="p-4 bg-[var(--neutral-surface-1)] border border-[var(--neutral-muted-border)] rounded-xl mt-5 mb-5">
           <p className="text-[13px] text-[#444] leading-relaxed">
             <strong>Real data only.</strong> Results come from LinkedIn API and live scraping of public tender portals (Alberta Purchasing Connection, MERX, City of Edmonton). No AI-generated names or fake companies. Focused on finding real contacts who need <strong>fencing</strong> — temporary, permanent, construction hoarding, event perimeter, and security fencing. Requires Chromium on the server for JavaScript-rendered portals.
           </p>
@@ -256,9 +256,9 @@ export default function Find() {
       )}
 
       {/* Search Criteria */}
-      {activeTab === "search" && <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-5">
-        <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">Set Your Target Criteria</h3>
-        <p className="text-[13px] text-[#888] mb-5">Tell the engine what you're selling, where, and who you want to reach — then it goes and finds them</p>
+      {activeTab === "search" && <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-5">
+        <h3 className="text-[16px] font-bold text-[var(--brand-primary)] mb-1">Set Your Target Criteria</h3>
+        <p className="text-[13px] text-[#6b6b6b] mb-5">Tell the engine what you're selling, where, and who you want to reach — then it goes and finds them</p>
         
         <div className="grid grid-cols-3 gap-4">
           <div>
@@ -314,7 +314,7 @@ export default function Find() {
             <button
               onClick={runSearch}
               disabled={searching}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold hover:bg-[#2a5a65] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-primary)] text-white rounded-lg text-[14px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-50"
             >
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               {searching ? "Searching..." : "Search"}
@@ -322,30 +322,30 @@ export default function Find() {
           ) : (
             <button
               onClick={resetSearch}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#1a4750] border border-[#ddd] rounded-lg text-[14px] font-semibold hover:border-[#bbb] transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[var(--brand-primary)] border border-[#ddd] rounded-lg text-[14px] font-semibold hover:border-[#bbb] transition-colors"
             >
               Reset Search
             </button>
           )}
           {!searching && !showResults && (
-            <span className="text-[12px] text-[#aaa]">Scrapes company websites, directories, Google results, and public profiles</span>
+            <span className="text-[12px] text-[#737373]">Scrapes company websites, directories, Google results, and public profiles</span>
           )}
         </div>
       </div>}
 
       {/* Progress */}
       {activeTab === "search" && searching && (
-        <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+        <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-5 h-5 border-[3px] border-[#1a4750] border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-[3px] border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
             <span className="text-[14px] font-semibold">{currentSourceLabel}</span>
           </div>
           <div className="space-y-2">
             {sourcesFound.map((src, i) => (
-              <div key={i} className="flex items-center gap-2.5 py-2 border-b border-[#f4f4f8] last:border-0 result-row">
-                <Check className="h-3.5 w-3.5 text-[#3d6b50]" />
+              <div key={i} className="flex items-center gap-2.5 py-2 border-b border-[var(--neutral-surface-2)] last:border-0 result-row">
+                <Check className="h-3.5 w-3.5 text-[var(--brand-accent)]" />
                 <span className="text-[13px] font-semibold">{src.name}</span>
-                <span className="text-[12px] text-[#888]">— {src.count}</span>
+                <span className="text-[12px] text-[#6b6b6b]">— {src.count}</span>
               </div>
             ))}
           </div>
@@ -354,7 +354,7 @@ export default function Find() {
 
       {/* Tenders Card */}
       {activeTab === "search" && showTenders && results.length > 0 && (
-        <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+        <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-4">
           <div className="flex items-center gap-2 mb-3">
             <span className="text-[16px]">📋</span>
             <h3 className="text-[16px] font-bold">Sources Checked</h3>
@@ -363,9 +363,9 @@ export default function Find() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
             {results.filter(r => r.source !== "System").map((r, i) => (
               <div key={i} className="p-3 bg-[#f8f5f0] rounded-lg border border-[#d8d0c4]">
-                <div className="text-[12px] font-semibold text-[#8c7355] mb-1">📋 {r.source}</div>
+                <div className="text-[12px] font-semibold text-[var(--brand-primary)] mb-1">📋 {r.source}</div>
                 <div className="text-[13px] font-semibold">{r.company} — {r.role}</div>
-                <div className="text-[12px] text-[#888] mt-1">{r.serviceNeed?.slice(0, 80)}</div>
+                <div className="text-[12px] text-[#6b6b6b] mt-1">{r.serviceNeed?.slice(0, 80)}</div>
               </div>
             )).slice(0, 4)}
           </div>
@@ -374,16 +374,16 @@ export default function Find() {
 
       {/* Results */}
       {activeTab === "search" && showResults && (
-        <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+        <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-4">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="text-[16px] font-bold text-[#1a4750]">Contacts Found — {results.length} decision-makers</h3>
-              <p className="text-[13px] text-[#888] mt-1">Filtered by: Estimators, Buyers, PMs, Procurement, Site Supers · Email patterns detected</p>
+              <h3 className="text-[16px] font-bold text-[var(--brand-primary)]">Contacts Found — {results.length} decision-makers</h3>
+              <p className="text-[13px] text-[#6b6b6b] mt-1">Filtered by: Estimators, Buyers, PMs, Procurement, Site Supers · Email patterns detected</p>
             </div>
             <button
               onClick={importAll}
               disabled={createBulk.isPending || results.length === 0}
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold hover:bg-[#2a5a65] transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-primary)] text-white rounded-lg text-[14px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-50"
             >
               {createBulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Import All to Segment →
@@ -399,11 +399,11 @@ export default function Find() {
               <p className="text-[14px] text-[#666] max-w-md mx-auto">
                 Real-time scraping of tender portals (Alberta Purchasing Connection, MERX) requires Chromium installed on the server.
               </p>
-              <p className="text-[13px] text-[#888] mt-2 max-w-md mx-auto">
+              <p className="text-[13px] text-[#6b6b6b] mt-2 max-w-md mx-auto">
                 On your VPS, run: <code className="bg-[#f0f0f0] px-2 py-0.5 rounded text-[12px]">sudo apt install chromium-browser</code> then restart the app.
               </p>
-              <p className="text-[13px] text-[#888] mt-3">
-                Or use the <button onClick={() => setActiveTab("csv")} className="text-[#1a4750] font-semibold hover:underline">CSV Import</button> tab to import contacts from Scott's Directories or Sales Navigator.
+              <p className="text-[13px] text-[#6b6b6b] mt-3">
+                Or use the <button onClick={() => setActiveTab("csv")} className="text-[var(--brand-primary)] font-semibold hover:underline">CSV Import</button> tab to import contacts from Scott's Directories or Sales Navigator.
               </p>
             </div>
           ) : (
@@ -414,20 +414,20 @@ export default function Find() {
                     type="checkbox" 
                     checked={selectedResults.includes(i)}
                     onChange={() => toggleResult(i)}
-                    className="w-4 h-4 rounded border-2 border-[#ddd] shrink-0 cursor-pointer accent-[#1a4750]" 
+                    className="w-4 h-4 rounded border-2 border-[#ddd] shrink-0 cursor-pointer accent-[var(--brand-primary)]" 
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[14px] font-semibold">{c.name}</span>
                       <span className="badge-gray">{c.role}</span>
                     </div>
-                    <div className="flex items-center gap-3 mt-1 text-[12px] text-[#888]">
+                    <div className="flex items-center gap-3 mt-1 text-[12px] text-[#6b6b6b]">
                       <span>🏢 {c.company}</span>
                       <span>📍 {c.region}</span>
                       <span>📧 <span className="font-mono">{c.email}</span></span>
                       <span className={c.status === "Verified" ? "badge-green" : "badge-amber"}>{c.status}</span>
                     </div>
-                    <div className="mt-1 text-[11px] text-[#aaa]">
+                    <div className="mt-1 text-[11px] text-[#737373]">
                       Pattern: <span className="font-mono">{c.pattern}</span> · Source: {c.source}
                     </div>
                   </div>
@@ -447,11 +447,11 @@ export default function Find() {
                   <option value="implied_published">Implied — Published Contact</option>
                 </select>
               </div>
-              <div className="text-center text-[13px] text-[#888]">
+              <div className="text-center text-[13px] text-[#6b6b6b]">
                 Showing {results.length} contacts · {!consentBasis && <span className="text-amber-600 font-semibold">Select consent basis to enable import</span>}
               </div>
               <div className="text-center mt-2">
-                <button onClick={importAll} disabled={!consentBasis || createBulk.isPending} className="px-5 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold disabled:opacity-40">
+                <button onClick={importAll} disabled={!consentBasis || createBulk.isPending} className="px-5 py-2 bg-[var(--brand-primary)] text-white rounded-lg text-[13px] font-semibold disabled:opacity-40">
                   {createBulk.isPending ? "Importing..." : `Import All (${results.length})`}
                 </button>
               </div>
@@ -464,52 +464,52 @@ export default function Find() {
       {/* Tenders & RFPs Tab */}
       {activeTab === "tenders" && (
         <div className="mt-5">
-          <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mb-4">
-            <h3 className="text-[16px] font-bold text-[#1a4750] mb-2">Active Tenders & RFPs</h3>
-            <p className="text-[13px] text-[#888] mb-4">Government and municipal procurement opportunities for fencing and site services across Alberta. Click any portal to go directly to their active fencing bids.</p>
+          <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mb-4">
+            <h3 className="text-[16px] font-bold text-[var(--brand-primary)] mb-2">Active Tenders & RFPs</h3>
+            <p className="text-[13px] text-[#6b6b6b] mb-4">Government and municipal procurement opportunities for fencing and site services across Alberta. Click any portal to go directly to their active fencing bids.</p>
             <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 mb-4">
               <span className="text-amber-600">⚠️</span>
               <span className="text-[13px] text-amber-800 font-medium">Requires Chromium on the server for live scraping. Connect SerpAPI or MERX in Settings for automated monitoring.</span>
             </div>
             <div className="grid grid-cols-1 gap-3">
-              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+              <div className="p-4 bg-[var(--neutral-bg)] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[14px]">📋</span>
-                  <span className="text-[13px] font-bold text-[#1a4750]">Alberta Purchasing Connection</span>
+                  <span className="text-[13px] font-bold text-[var(--brand-primary)]">Alberta Purchasing Connection</span>
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Alberta government procurement portal. Publishes RFPs for fencing, construction hoarding, and site services.</p>
-                <a href="https://purchasing.alberta.ca/search?q=fencing&status=Open" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Active Fencing Bids →</a>
+                <a href="https://purchasing.alberta.ca/search?q=fencing&status=Open" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--brand-primary)] text-white rounded-md text-[12px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors">View Active Fencing Bids →</a>
               </div>
-              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+              <div className="p-4 bg-[var(--neutral-bg)] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[14px]">📋</span>
-                  <span className="text-[13px] font-bold text-[#1a4750]">MERX</span>
+                  <span className="text-[13px] font-bold text-[var(--brand-primary)]">MERX</span>
                   <span className="badge-amber">Subscription</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">National procurement platform. Government tenders and RFPs for construction, fencing, and infrastructure projects across Canada.</p>
-                <a href="https://www.merx.com/public/solicitations?keywords=fencing&province=Alberta" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Fencing Tenders →</a>
+                <a href="https://www.merx.com/public/solicitations?keywords=fencing&province=Alberta" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--brand-primary)] text-white rounded-md text-[12px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors">View Fencing Tenders →</a>
               </div>
-              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+              <div className="p-4 bg-[var(--neutral-bg)] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[14px]">🏛️</span>
-                  <span className="text-[13px] font-bold text-[#1a4750]">City of Edmonton Procurement</span>
+                  <span className="text-[13px] font-bold text-[var(--brand-primary)]">City of Edmonton Procurement</span>
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Municipal procurement for infrastructure, parks, and construction projects requiring fencing and site services.</p>
-                <a href="https://www.edmonton.ca/programs_services/procurement/current-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Current Opportunities →</a>
+                <a href="https://www.edmonton.ca/programs_services/procurement/current-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--brand-primary)] text-white rounded-md text-[12px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors">View Current Opportunities →</a>
               </div>
-              <div className="p-4 bg-[#f8f9fb] rounded-lg border border-[#eee]">
+              <div className="p-4 bg-[var(--neutral-bg)] rounded-lg border border-[#eee]">
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-[14px]">🏛️</span>
-                  <span className="text-[13px] font-bold text-[#1a4750]">City of Calgary Procurement</span>
+                  <span className="text-[13px] font-bold text-[var(--brand-primary)]">City of Calgary Procurement</span>
                   <span className="badge-green">Free</span>
                 </div>
                 <p className="text-[12px] text-[#666] mb-2">Calgary municipal procurement for construction, transit, and infrastructure projects.</p>
-                <a href="https://www.calgary.ca/procurement/open-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#1a4750] text-white rounded-md text-[12px] font-semibold hover:bg-[#2a5a65] transition-colors">View Open Opportunities →</a>
+                <a href="https://www.calgary.ca/procurement/open-opportunities" target="_blank" rel="noopener" className="inline-flex items-center gap-1 px-3 py-1.5 bg-[var(--brand-primary)] text-white rounded-md text-[12px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors">View Open Opportunities →</a>
               </div>
             </div>
-            <div className="mt-4 p-3 bg-[#f4f7f6] border border-[#d4ddd8] rounded-lg">
+            <div className="mt-4 p-3 bg-[var(--neutral-surface-1)] border border-[var(--neutral-muted-border)] rounded-lg">
               <p className="text-[12px] text-[#555]"><strong>How it works:</strong> Once Chromium is installed on your server and SerpAPI or MERX is connected in Settings, the engine will automatically monitor these portals daily and surface new fencing-related tenders in the Search Sources tab results.</p>
             </div>
           </div>
@@ -520,11 +520,11 @@ export default function Find() {
       {activeTab === "csv" && (
         <div>
           {/* Instructions */}
-          <div className="bg-white rounded-xl border border-[#e8e8ee] p-5 mb-4 mt-5">
-            <h3 className="text-[15px] font-bold text-[#1a4750] mb-3">How to Import Contacts</h3>
+          <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-5 mb-4 mt-5">
+            <h3 className="text-[15px] font-bold text-[var(--brand-primary)] mb-3">How to Import Contacts</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-[#f8f9fa] rounded-lg">
-                <div className="text-[13px] font-semibold text-[#1a4750] mb-2">From Scott's Directories:</div>
+                <div className="text-[13px] font-semibold text-[var(--brand-primary)] mb-2">From Scott's Directories:</div>
                 <ol className="text-[12px] text-[#555] space-y-1 list-decimal list-inside">
                   <li>Log into Scott's Directories</li>
                   <li>Search by company or industry</li>
@@ -534,7 +534,7 @@ export default function Find() {
                 </ol>
               </div>
               <div className="p-3 bg-[#f8f9fa] rounded-lg">
-                <div className="text-[13px] font-semibold text-[#1a4750] mb-2">From LinkedIn Sales Navigator:</div>
+                <div className="text-[13px] font-semibold text-[var(--brand-primary)] mb-2">From LinkedIn Sales Navigator:</div>
                 <ol className="text-[12px] text-[#555] space-y-1 list-decimal list-inside">
                   <li>Build your lead list with filters</li>
                   <li>Select all leads in the list</li>
@@ -544,9 +544,9 @@ export default function Find() {
               </div>
             </div>
             <div className="mt-3 p-3 bg-[#f0f7f7] rounded-lg border border-[#d4e8e4]">
-              <div className="text-[12px] font-semibold text-[#1a4750] mb-1">Required CSV columns:</div>
+              <div className="text-[12px] font-semibold text-[var(--brand-primary)] mb-1">Required CSV columns:</div>
               <code className="text-[11px] text-[#444] bg-white px-2 py-1 rounded block">First Name, Last Name, Company, Title, Location</code>
-              <div className="text-[11px] text-[#888] mt-1">Column names are flexible — the system auto-detects common variations (e.g., "Job Title" = "Title", "Organization" = "Company")</div>
+              <div className="text-[11px] text-[#6b6b6b] mt-1">Column names are flexible — the system auto-detects common variations (e.g., "Job Title" = "Title", "Organization" = "Company")</div>
             </div>
           </div>
 
@@ -555,30 +555,30 @@ export default function Find() {
             onDragOver={e => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleCsvDrop}
-            className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${dragOver ? "border-[#1a4750] bg-[#f0f7f7]" : "border-[#ddd] bg-white"}`}
+            className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors ${dragOver ? "border-[var(--brand-primary)] bg-[#f0f7f7]" : "border-[#ddd] bg-white"}`}
           >
-            <Upload className="h-8 w-8 mx-auto mb-3 text-[#aaa]" />
+            <Upload className="h-8 w-8 mx-auto mb-3 text-[#737373]" />
             <div className="text-[14px] font-semibold mb-1">Drop your CSV file here</div>
-            <div className="text-[13px] text-[#888] mb-3">Export from Sales Navigator, Scott's Directories, or any spreadsheet</div>
-            <label className="inline-flex items-center gap-2 px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold cursor-pointer hover:bg-[#2a5a65] transition-colors">
+            <div className="text-[13px] text-[#6b6b6b] mb-3">Export from Sales Navigator, Scott's Directories, or any spreadsheet</div>
+            <label className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-lg text-[13px] font-semibold cursor-pointer hover:bg-[var(--brand-primary-hover)] transition-colors">
               Browse Files
               <input type="file" accept=".csv" onChange={handleCsvSelect} className="hidden" />
             </label>
-            <div className="text-[11px] text-[#aaa] mt-3">Supports: First Name, Last Name, Company, Title, Location columns</div>
+            <div className="text-[11px] text-[#737373] mt-3">Supports: First Name, Last Name, Company, Title, Location columns</div>
           </div>
 
           {/* CSV Results */}
           {csvData.length > 0 && (
-            <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
+            <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-4">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-[16px] font-bold text-[#1a4750]">{csvFileName} — {csvData.length} contacts parsed</h3>
-                  <p className="text-[13px] text-[#888] mt-1">Email patterns applied from Known Patterns database</p>
+                  <h3 className="text-[16px] font-bold text-[var(--brand-primary)]">{csvFileName} — {csvData.length} contacts parsed</h3>
+                  <p className="text-[13px] text-[#6b6b6b] mt-1">Email patterns applied from Known Patterns database</p>
                 </div>
                 <button
                   onClick={importCsv}
                   disabled={createBulk.isPending}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1a4750] text-white rounded-lg text-[14px] font-semibold hover:bg-[#2a5a65] transition-colors disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[var(--brand-primary)] text-white rounded-lg text-[14px] font-semibold hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-50"
                 >
                   {createBulk.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                   Import All to Segment →
@@ -592,7 +592,7 @@ export default function Find() {
                         <span className="text-[14px] font-semibold">{c.name}</span>
                         <span className="badge-gray">{c.role}</span>
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-[12px] text-[#888]">
+                      <div className="flex items-center gap-3 mt-1 text-[12px] text-[#6b6b6b]">
                         <span>🏢 {c.company}</span>
                         <span>📍 {c.region}</span>
                         <span>📧 <span className="font-mono">{c.email}</span></span>
@@ -606,16 +606,16 @@ export default function Find() {
           )}
 
           {/* Known Patterns */}
-          <div className="bg-white rounded-xl border border-[#e8e8ee] p-6 mt-4">
-            <h3 className="text-[16px] font-bold text-[#1a4750] mb-1">Known Email Patterns</h3>
-            <p className="text-[13px] text-[#888] mb-4">When you know a company's email format, add it here. CSV imports will auto-apply matching patterns.</p>
+          <div className="bg-white rounded-xl border border-[var(--neutral-border)] p-6 mt-4">
+            <h3 className="text-[16px] font-bold text-[var(--brand-primary)] mb-1">Known Email Patterns</h3>
+            <p className="text-[13px] text-[#6b6b6b] mb-4">When you know a company's email format, add it here. CSV imports will auto-apply matching patterns.</p>
             
             <div className="space-y-2 mb-4">
               {savedPatterns.map((p, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-lg border border-[#eee]">
                   <div className="flex items-center gap-4">
                     <span className="text-[14px] font-semibold">{p.company}</span>
-                    <span className="font-mono text-[13px] text-[#888]">{p.format}@{p.domain}</span>
+                    <span className="font-mono text-[13px] text-[#6b6b6b]">{p.format}@{p.domain}</span>
                   </div>
                   <button onClick={() => removePattern(i)} className="text-[#ccc] hover:text-red-400 transition-colors">
                     <Trash2 className="h-4 w-4" />
@@ -627,15 +627,15 @@ export default function Find() {
             {/* Add Pattern Form */}
             <div className="flex gap-2 items-end">
               <div className="flex-1">
-                <label className="text-[11px] font-semibold text-[#888] block mb-1">Company</label>
+                <label className="text-[11px] font-semibold text-[#6b6b6b] block mb-1">Company</label>
                 <input value={patternCompany} onChange={e => setPatternCompany(e.target.value)} placeholder="e.g., AECON" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]" />
               </div>
               <div className="flex-1">
-                <label className="text-[11px] font-semibold text-[#888] block mb-1">Domain</label>
+                <label className="text-[11px] font-semibold text-[#6b6b6b] block mb-1">Domain</label>
                 <input value={patternDomain} onChange={e => setPatternDomain(e.target.value)} placeholder="e.g., aecon.com" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]" />
               </div>
               <div className="w-[160px]">
-                <label className="text-[11px] font-semibold text-[#888] block mb-1">Format</label>
+                <label className="text-[11px] font-semibold text-[#6b6b6b] block mb-1">Format</label>
                 <select value={patternFormat} onChange={e => setPatternFormat(e.target.value)} className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-white">
                   <option value="first.last">first.last@</option>
                   <option value="flast">flast@</option>
@@ -643,7 +643,7 @@ export default function Find() {
                   <option value="first_last">first_last@</option>
                 </select>
               </div>
-              <button onClick={addPattern} className="px-4 py-2 bg-[#1a4750] text-white rounded-lg text-[13px] font-semibold shrink-0">
+              <button onClick={addPattern} className="px-4 py-2 bg-[var(--brand-primary)] text-white rounded-lg text-[13px] font-semibold shrink-0">
                 <Plus className="h-4 w-4" />
               </button>
             </div>

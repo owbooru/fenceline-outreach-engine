@@ -87,24 +87,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (isChecking) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f8f9fb]">
-        <div className="h-8 w-8 border-2 border-[#1a4750] border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-[var(--neutral-bg)]">
+        <div className="h-8 w-8 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f8f9fb]">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--neutral-bg)]">
         <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
           <div className="flex flex-col items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-[#1a4750] flex items-center justify-center">
+            <div className="h-12 w-12 rounded-xl bg-[var(--brand-primary)] flex items-center justify-center">
               <Lock className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-center text-[#1a4750]">
+            <h1 className="text-2xl font-extrabold tracking-tight text-center text-[var(--brand-primary)]">
               Lead Engine
             </h1>
-            <p className="text-sm text-[#777] text-center max-w-sm mt-2">
+            <p className="text-sm text-[#6b6b6b] text-center max-w-sm mt-2">
               Enter your password to access the lead generation platform.
             </p>
           </div>
@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {error && <p className="text-xs text-red-500 text-center">{error}</p>}
             <Button
               onClick={handleLogin}
-              className="w-full bg-[#1a4750] hover:bg-[#2a5a65] text-white font-semibold rounded-lg"
+              className="w-full bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-hover)] text-white font-semibold rounded-lg"
             >
               Access Platform
             </Button>
@@ -133,7 +133,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="flex h-screen">
       {/* Teal Sidebar */}
-      <div className={`${collapsed ? "w-16" : "w-[240px]"} bg-[#1a4750] text-white flex flex-col shrink-0 transition-all duration-200 relative`}>
+      <div className={`${collapsed ? "w-16" : "w-[240px]"} bg-[var(--brand-primary)] text-white flex flex-col shrink-0 transition-all duration-200 relative`}>
         <div className={`px-6 pt-6 pb-7 border-b border-white/[0.08] ${collapsed ? "px-3" : ""}`}>
           {!collapsed && <h1 className="text-lg font-extrabold tracking-tight">Lead Engine</h1>}
           {collapsed && <h1 className="text-lg font-extrabold tracking-tight text-center">LE</h1>}
@@ -176,7 +176,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto p-8 bg-[#f8f9fb]">
+      <div className="flex-1 overflow-y-auto p-8 bg-[var(--neutral-bg)]">
         {children}
       </div>
     </div>
