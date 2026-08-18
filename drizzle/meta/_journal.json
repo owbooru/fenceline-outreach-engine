@@ -36,6 +36,20 @@
       "when": 1787027118334,
       "tag": "0004_nervous_nighthawk",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787032275947,
+      "tag": "0005_loud_wrecker",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787033200000,
+      "tag": "0006_aspiring_red_wolf",
+      "breakpoints": true
     }
   ]
 }

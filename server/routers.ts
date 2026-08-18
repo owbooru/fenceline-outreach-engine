@@ -9,6 +9,8 @@ import { scrapeLinkedIn } from "./linkedinScraper";
 import { sendCampaignStep, getQueueStatus, getEmailConfig } from "./emailSender";
 import { handleReply } from "./replyDetector";
 import { getDb } from "./db";
+import { senderProfiles } from "../drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 
 export const appRouter = router({
   system: systemRouter,
@@ -149,6 +151,7 @@ export const appRouter = router({
         sendingDomain: z.string().optional(),
         fromName: z.string().optional(),
         fromEmail: z.string().optional(),
+        senderProfileId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const id = await db.createCampaign(input as any);
@@ -167,6 +170,7 @@ export const appRouter = router({
           fromName: z.string().optional(),
           fromEmail: z.string().optional(),
           scheduledAt: z.string().optional(),
+          senderProfileId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input }) => {
@@ -506,6 +510,55 @@ export const appRouter = router({
           if (result.sendable) { sendable++; } else { excluded++; if (result.reason) reasons.push(result.reason); }
         }
         return { total: enrolled.length, sendable, excluded, reasons: Array.from(new Set(reasons)) };
+      }),
+  }),
+
+  // ─── Sender Profiles ──────────────────────────────────────────────────────
+  senderProfiles: router({
+    list: publicProcedure.query(async () => {
+      const database = await getDb();
+      if (!database) return [];
+      return database.select().from(senderProfiles).orderBy(desc(senderProfiles.createdAt));
+    }),
+
+    create: publicProcedure
+      .input(z.object({
+        senderName: z.string().min(1),
+        senderEmail: z.string().email(),
+        senderTitle: z.string().optional(),
+        tone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        const result = await database.insert(senderProfiles).values(input as any);
+        return { id: (result as any)[0]?.insertId || 0 };
+      }),
+
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          senderName: z.string().min(1).optional(),
+          senderEmail: z.string().email().optional(),
+          senderTitle: z.string().optional(),
+          tone: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        await database.update(senderProfiles).set(input.data as any).where(eq(senderProfiles.id, input.id));
+        return { success: true };
+      }),
+
+    delete: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        await database.delete(senderProfiles).where(eq(senderProfiles.id, input.id));
+        return { success: true };
       }),
   }),
 

@@ -3,29 +3,27 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 
 export default function Templates() {
-  const [profiles, setProfiles] = useState<{name: string; initials: string; email: string; role: string; tone: string}[]>([
-    { name: "Rob McMullen", initials: "RM", email: "rob@fenceline.ca", role: "Fence Sales", tone: "Friendly, direct, personal. References specific projects by name. Keeps it short and to the point." },
-  ]);
+  const profilesQuery = trpc.senderProfiles.list.useQuery();
+  const createProfile = trpc.senderProfiles.create.useMutation({
+    onSuccess: () => { profilesQuery.refetch(); setShowAddForm(false); setNewName(""); setNewEmail(""); setNewTitle(""); setNewTone(""); toast.success("Sender profile created"); },
+    onError: (e) => toast.error(e.message),
+  });
+  const deleteProfile = trpc.senderProfiles.delete.useMutation({
+    onSuccess: () => { profilesQuery.refetch(); toast.success("Profile removed"); },
+  });
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState("");
   const [newEmail, setNewEmail] = useState("");
-  const [newRole, setNewRole] = useState("");
+  const [newTitle, setNewTitle] = useState("");
   const [newTone, setNewTone] = useState("");
 
   const addProfile = () => {
-    if (!newName || !newEmail) return;
-    const initials = newName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
-    setProfiles(prev => [...prev, { name: newName, initials, email: newEmail, role: newRole, tone: newTone }]);
-    setNewName("");
-    setNewEmail("");
-    setNewRole("");
-    setNewTone("");
-    setShowAddForm(false);
+    if (!newName || !newEmail) { toast.error("Name and email are required"); return; }
+    createProfile.mutate({ senderName: newName, senderEmail: newEmail, senderTitle: newTitle || undefined, tone: newTone || undefined });
   };
 
-  const removeProfile = (idx: number) => {
-    setProfiles(prev => prev.filter((_, i) => i !== idx));
-  };
+  const profiles = profilesQuery.data || [];
 
   return (
     <div>
@@ -66,20 +64,25 @@ export default function Templates() {
         <p className="text-[13px] text-[#6b6b6b] mb-5">Each sender has their own voice and tone — so emails feel personal, not automated</p>
         <div className="grid grid-cols-2 gap-4">
           {profiles.map((p, i) => (
-            <div key={i} className="p-4 border border-[#eee] rounded-lg relative group">
-              {i > 0 && (
-                <button onClick={() => removeProfile(i)} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#ccc] hover:text-red-400">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                </button>
-              )}
+            <div key={p.id} className="p-4 border border-[#eee] rounded-lg relative group">
+              <button onClick={() => deleteProfile.mutate({ id: p.id })} className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-[#ccc] hover:text-red-400">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+              </button>
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-9 h-9 rounded-full bg-[#e8f0fe] flex items-center justify-center text-[14px] font-bold text-[var(--brand-primary)]">{p.initials}</div>
+                <div className="w-9 h-9 rounded-full bg-[#e8f0fe] flex items-center justify-center text-[14px] font-bold text-[var(--brand-primary)]">{p.senderName.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2)}</div>
                 <div>
-                  <div className="text-[14px] font-semibold">{p.name}</div>
-                  <div className="text-[12px] text-[#6b6b6b]">{p.role} — {p.email}</div>
+                  <div className="text-[14px] font-semibold">{p.senderName}</div>
+                  <div className="text-[12px] text-[#6b6b6b]">{p.senderTitle || ""}{p.senderTitle ? " — " : ""}{p.senderEmail}</div>
                 </div>
               </div>
-              <div className="text-[13px] text-[#666]">Tone: {p.tone}</div>
+              {p.tone && <div className="text-[13px] text-[#666] mb-2">Tone: {p.tone}</div>}
+              {(!p.senderName || !p.senderEmail) && (
+                <div className="text-[12px] text-red-500 font-medium mt-2">⚠ Missing name or email — cannot be used to send</div>
+              )}
+              <div className="mt-3 p-2.5 bg-[var(--neutral-surface-2)] rounded border border-[#eee]">
+                <div className="text-[10px] text-[#737373] uppercase font-semibold mb-1">CASL Footer Preview</div>
+                <p className="text-[11px] text-[#6b6b6b] italic leading-relaxed">This message was sent by {p.senderName}{p.senderTitle ? `, ${p.senderTitle}` : ""} on behalf of FenceLine Rentals. 9871 279 St #112, Acheson, AB T7X 6J4. <span className="text-[var(--brand-primary)] underline">Unsubscribe</span></p>
+              </div>
             </div>
           ))}
 
@@ -97,19 +100,19 @@ export default function Templates() {
                 <input
                   value={newName}
                   onChange={e => setNewName(e.target.value)}
-                  placeholder="Full name (e.g., Sarah Johnson)"
+                  placeholder="Full name — required (e.g., Sarah Johnson)"
                   className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]"
                 />
                 <input
                   value={newEmail}
                   onChange={e => setNewEmail(e.target.value)}
-                  placeholder="Email (e.g., sarah@fenceline.ca)"
+                  placeholder="Email — required (e.g., sarah@outreach-fenceline.ca)"
                   className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]"
                 />
                 <input
-                  value={newRole}
-                  onChange={e => setNewRole(e.target.value)}
-                  placeholder="Role (e.g., Account Manager, Inside Sales)"
+                  value={newTitle}
+                  onChange={e => setNewTitle(e.target.value)}
+                  placeholder="Title — optional (e.g., Sales Manager)"
                   className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]"
                 />
                 <textarea

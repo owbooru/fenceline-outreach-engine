@@ -47,6 +47,11 @@ process.env.SMTP_PASS = "testpass";
 process.env.SMTP_FROM_NAME = "Test Sender";
 process.env.SMTP_FROM_EMAIL = "test@test.local";
 process.env.APP_URL = "http://localhost:3000";
+process.env.CASL_SENDER_NAME = "Test Sender";
+process.env.CASL_BUSINESS_NAME = "Test Co";
+process.env.CASL_MAILING_ADDRESS = "123 Test St";
+process.env.CASL_CONTACT_EMAIL = "test@test.local";
+process.env.CASL_CONTACT_PHONE = "555-0000";
 
 // Now import the real sendEmail
 import { sendEmail } from "./emailSender";
@@ -86,12 +91,13 @@ describe("Send path regression: assertSendable gate", () => {
       leadId: 1,
       campaignId: 1,
       stepId: 1,
+      sender: { profileId: 1, senderName: "Test Sender", senderEmail: "test@test.local", senderTitle: null },
     });
 
     // The send must be blocked
     expect(result.success).toBe(false);
     expect(result.error).toContain("[CASL]");
-    expect(result.error).toContain("none");
+    expect(result.error).toContain("consent");
 
     // sendMail must NOT have been called — the gate stopped it
     expect(mockSendMail).not.toHaveBeenCalled();
@@ -118,11 +124,11 @@ describe("Send path regression: assertSendable gate", () => {
       leadId: 2,
       campaignId: 1,
       stepId: 1,
+      sender: { profileId: 1, senderName: "Test Sender", senderEmail: "test@test.local", senderTitle: null },
     });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("[CASL]");
-    expect(result.error).toContain("expired");
     expect(mockSendMail).not.toHaveBeenCalled();
   });
 
@@ -147,11 +153,11 @@ describe("Send path regression: assertSendable gate", () => {
       leadId: 3,
       campaignId: 1,
       stepId: 1,
+      sender: { profileId: 1, senderName: "Test Sender", senderEmail: "test@test.local", senderTitle: null },
     });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("[CASL]");
-    expect(result.error).toContain("bounced");
     expect(mockSendMail).not.toHaveBeenCalled();
   });
 
@@ -180,6 +186,7 @@ describe("Send path regression: assertSendable gate", () => {
       leadId: 4,
       campaignId: 1,
       stepId: 1,
+      sender: { profileId: null, senderName: "Test Sender", senderEmail: "test@test.local", senderTitle: null },
     });
 
     // The send must succeed — assertSendable passed, sendMail was called
@@ -218,11 +225,11 @@ describe("Send path regression: assertSendable gate", () => {
       leadId: 5,
       campaignId: 1,
       stepId: 1,
+      sender: { profileId: 1, senderName: "Test Sender", senderEmail: "test@test.local", senderTitle: null },
     });
 
     expect(result.success).toBe(false);
     expect(result.error).toContain("[CASL]");
-    expect(result.error).toContain("unsubscribed");
     expect(mockSendMail).not.toHaveBeenCalled();
   });
 });

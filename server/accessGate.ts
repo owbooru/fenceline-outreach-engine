@@ -92,6 +92,9 @@ export function accessGateMiddleware() {
     // Skip tracking routes (open pixel, click redirect, unsubscribe)
     if (req.path.startsWith("/api/track/")) return next();
 
+    // Skip health endpoint (unauthenticated monitoring)
+    if (req.path === "/api/health") return next();
+
     // Skip OAuth callback
     if (req.path.startsWith("/api/oauth/")) return next();
 

@@ -27,6 +27,7 @@ export default function Campaigns() {
   const [name, setName] = useState("");
   const [track, setTrack] = useState("existing_customers");
   const [description, setDescription] = useState("");
+  const [senderProfileId, setSenderProfileId] = useState<number | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [previewTrack, setPreviewTrack] = useState("new_local");
   const [sendingCampaignId, setSendingCampaignId] = useState<number | null>(null);
@@ -38,11 +39,12 @@ export default function Campaigns() {
 
   const { data: campaigns, isLoading, refetch } = trpc.campaigns.list.useQuery();
   const { data: allLeads } = trpc.leads.list.useQuery({});
+  const { data: senderProfiles } = trpc.senderProfiles.list.useQuery();
   const { data: enrolledLeads } = trpc.campaigns.getLeads.useQuery(
     { campaignId: expandedCampaignId! },
     { enabled: !!expandedCampaignId }
   );
-  const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); } });
+  const createCampaign = trpc.campaigns.create.useMutation({ onSuccess: () => { refetch(); setShowForm(false); setName(""); setDescription(""); setSenderProfileId(null); } });
   const updateCampaign = trpc.campaigns.update.useMutation({ onSuccess: () => refetch() });
   const enrollLeads = trpc.campaigns.enrollLeads.useMutation({
     onSuccess: (data) => {
@@ -111,7 +113,8 @@ export default function Campaigns() {
 
   const handleCreate = () => {
     if (!name) return;
-    createCampaign.mutate({ name, track: track as "existing_customers" | "new_local" | "new_national", description, sendingDomain: "outreach-fenceline.ca" });
+    if (!senderProfileId) { toast.error("A sender profile is required before creating a campaign"); return; }
+    createCampaign.mutate({ name, track: track as "existing_customers" | "new_local" | "new_national", description, sendingDomain: "outreach-fenceline.ca", senderProfileId });
   };
 
   const toggleStatus = (id: number, currentStatus: string) => {
@@ -201,8 +204,21 @@ export default function Campaigns() {
               <label className="text-[11px] font-semibold text-[#6b6b6b] block mb-1">Description (optional)</label>
               <input value={description} onChange={e => setDescription(e.target.value)} placeholder="e.g., Targeting estimators at Alberta GCs for temp fence sales" className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px]" />
             </div>
+            <div className="mb-3">
+              <label className="text-[11px] font-semibold text-[#6b6b6b] block mb-1">Sender Profile <span className="text-red-500">*</span></label>
+              {senderProfiles && senderProfiles.length > 0 ? (
+                <select value={senderProfileId || ""} onChange={e => setSenderProfileId(Number(e.target.value) || null)} className="w-full px-3 py-2 rounded-lg border border-[#ddd] text-[13px] bg-white">
+                  <option value="">— Select sender profile —</option>
+                  {senderProfiles.map((p: any) => (
+                    <option key={p.id} value={p.id}>{p.senderName} ({p.senderEmail}){!p.senderName || !p.senderEmail ? " ⚠ incomplete" : ""}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-[12px] text-red-600">No sender profiles exist. Create one on the Templates page first.</p>
+              )}
+            </div>
             <div className="flex gap-2">
-              <button onClick={handleCreate} disabled={createCampaign.isPending || !name} className="px-4 py-2 bg-[var(--brand-primary)] text-white rounded-lg text-[13px] font-semibold disabled:opacity-50">
+              <button onClick={handleCreate} disabled={createCampaign.isPending || !name || !senderProfileId} className="px-4 py-2 bg-[var(--brand-primary)] text-white rounded-lg text-[13px] font-semibold disabled:opacity-50">
                 {createCampaign.isPending ? <Loader2 className="h-4 w-4 animate-spin inline mr-1" /> : null}Create Campaign
               </button>
               <button onClick={() => setShowForm(false)} className="px-4 py-2 bg-white text-[#666] border border-[#ddd] rounded-lg text-[13px] font-semibold">Cancel</button>
@@ -242,7 +258,7 @@ export default function Campaigns() {
                     </button>
                     <button
                       onClick={() => handleSend(c.id)}
-                      disabled={!emailStatus.data?.configured || sendingCampaignId === c.id || c.status !== "active"}
+                      disabled={!emailStatus.data?.configured || sendingCampaignId === c.id || c.status !== "active" || !c.senderProfileId}
                       className="inline-flex items-center gap-1 px-3 py-1.5 text-[12px] font-semibold bg-[var(--brand-primary)] text-white rounded-lg hover:bg-[var(--brand-primary-hover)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {sendingCampaignId === c.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
@@ -251,6 +267,14 @@ export default function Campaigns() {
                   </div>
                 </div>
                 {c.description && <div className="text-[13px] text-[#6b6b6b] mt-2 ml-4">{c.description}</div>}
+                {/* Sender profile indicator */}
+                <div className="mt-2 ml-4 text-[12px]">
+                  {c.senderProfileId ? (
+                    <span className="text-[#6b6b6b]">Sender: <strong className="text-[var(--brand-primary)]">{senderProfiles?.find((p: any) => p.id === c.senderProfileId)?.senderName || `Profile #${c.senderProfileId}`}</strong></span>
+                  ) : (
+                    <span className="text-red-600 font-semibold">⚠ No sender profile assigned — sending blocked</span>
+                  )}
+                </div>
                 <div className="flex gap-6 mt-3 ml-4">
                   <div><div className="text-[11px] font-semibold text-[#6b6b6b]">Sent</div><div className="text-[16px] font-bold">{c.sentCount || 0}</div></div>
                   <div><div className="text-[11px] font-semibold text-[#6b6b6b]">Opened</div><div className="text-[16px] font-bold">{c.sentCount > 0 ? `${Math.round(((c.openCount || 0) / c.sentCount) * 100)}%` : "—"}</div></div>

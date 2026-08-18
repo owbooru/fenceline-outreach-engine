@@ -172,49 +172,73 @@ npx drizzle-kit generate && npx drizzle-kit migrate
 
 ## CASL Compliance — Required Before Sending
 
-Canada's Anti-Spam Legislation (CASL) requires valid consent and sender identification in every commercial electronic message. The application enforces this through `assertSendable()` in `server/caslCompliance.ts`, but the deployment must also be configured correctly.
+Canada's Anti-Spam Legislation (CASL) requires valid consent and sender identification in every commercial electronic message. The application self-enforces its compliance requirements on startup — it will not start if configuration is incomplete.
 
-### 1. Required Environment Variables
+### What happens on startup
 
-The following must be set in `.env` or the app cannot legally send. They are injected into the unsubscribe footer of every outgoing email:
+1. **Environment validation.** The application checks that all required variables are set and non-empty. If any are missing, it logs each one by name with a description, and exits with a non-zero status code. It does not start with warnings.
+
+2. **Trigger auto-apply.** After connecting to the database, the application detects the engine (`SELECT VERSION()`). On MySQL or MariaDB, it checks `information_schema.TRIGGERS` for the three compliance triggers and creates any that are missing. This is idempotent — safe on every boot. On TiDB, it logs a warning and continues (triggers are unsupported; enforcement is application-level only).
+
+3. **Health endpoint.** `GET /api/health` (unauthenticated) reports the compliance state after startup.
+
+### Required environment variables
+
+The application will not start without these:
 
 ```
+DATABASE_URL=mysql://user:password@localhost:3306/fenceline
+JWT_SECRET=your-random-secret-here-minimum-32-chars
+APP_ACCESS_PASSWORD=Fenceline!
 CASL_SENDER_NAME=Rob McMullen
-CASL_BUSINESS_NAME=FenceLine
-CASL_MAILING_ADDRESS=Edmonton, AB, Canada
-CASL_CONTACT_PHONE=780-555-0000
-CASL_CONTACT_EMAIL=rob@fenceline.ca
+CASL_BUSINESS_NAME=FenceLine Rentals
+CASL_MAILING_ADDRESS=9871 279 St #112, Acheson, AB T7X 6J4
+CASL_CONTACT_EMAIL=info@fenceline.ca
+```
+
+Plus at least one of:
+
+```
+CASL_CONTACT_PHONE=(780) 720-6300
 CASL_CONTACT_WEB=https://fenceline.ca
 ```
 
-If these are missing, the CASL footer will be incomplete and the message will not comply with the legislation.
+CASL requires a working contact method beyond email. Either phone or web satisfies this; both may be set.
 
-### 2. Apply Migration 0005 (Triggers)
+### Deployment is now
 
-`drizzle-kit migrate` alone is **not sufficient**. Migration `0005_casl_triggers.sql` contains `BEFORE` triggers with `SIGNAL` statements that Drizzle's migration runner does not handle. You must apply it manually:
+1. Set `.env` with all required variables
+2. `git pull && pnpm install && pnpm build`
+3. Restart the application (`pm2 restart fenceline` or `docker compose up -d`)
+4. Confirm with `GET /api/health`
+
+The manual `mysql < triggers/casl_triggers.sql` step is no longer required — the application applies the triggers itself on startup.
+
+### Verifying compliance state
 
 ```bash
-mysql -u fenceline -p fenceline < drizzle/0005_casl_triggers.sql
+curl https://your-domain.com/api/health
 ```
 
-Then verify the three triggers exist:
+Expected response (MariaDB):
 
-```bash
-mysql -u fenceline -p -e "SHOW TRIGGERS FROM fenceline;"
+```json
+{
+  "status": "ok",
+  "database": { "engine": "MariaDB 10.11.x", "connected": true },
+  "compliance": {
+    "triggersPresent": true,
+    "senderIdentificationConfigured": true,
+    "enforcementLevel": "database"
+  }
+}
 ```
 
-**Expected output must include:**
-- `consent_events_no_update` — prevents UPDATE on consent_events
-- `consent_events_no_delete` — prevents DELETE on consent_events
-- `leads_bounce_suppress` — auto-inserts into unsubscribes when a lead bounces
+If `enforcementLevel` is `"application"`, the triggers are not active. On MariaDB/MySQL this means the auto-apply failed — check the application logs. On TiDB this is expected.
 
-### 3. Consequence if Migration 0005 Is Not Applied
+### Engine requirement
 
-If migration 0005 has not been applied, the append-only guarantee on `consent_events` and the bounce auto-suppression trigger **do not exist at the database level**. The compliance layer is application-enforced only — meaning anyone with direct database access could modify or delete consent audit records, and bounced leads are only suppressed if the application code path runs (not if the database is modified directly).
-
-### 4. Engine Requirement
-
-MariaDB or MySQL supports these triggers. TiDB does not. If the production database is TiDB, migration 0005 will fail and that must be known rather than assumed. The VPS deployment guide above installs MariaDB, which is the intended production engine.
+MariaDB or MySQL supports the compliance triggers. TiDB does not. The VPS deployment installs MariaDB, which is the intended production engine. The canonical trigger definitions remain in `triggers/casl_triggers.sql` — the startup code and the migration file produce identical triggers.
 
 ## Updating the App
 
