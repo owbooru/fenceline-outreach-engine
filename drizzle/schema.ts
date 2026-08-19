@@ -75,6 +75,7 @@ export const campaigns = mysqlTable("campaigns", {
   scheduledAt: timestamp("scheduledAt"),
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
+  senderProfileId: int("senderProfileId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -121,6 +122,7 @@ export const engagementEvents = mysqlTable("engagement_events", {
   stepId: int("stepId"),
   eventType: mysqlEnum("eventType", ["sent", "opened", "clicked", "replied", "bounced", "unsubscribed"]).notNull(),
   metadata: json("metadata").$type<Record<string, unknown>>(),
+  senderProfileId: int("senderProfileId"),
   occurredAt: timestamp("occurredAt").defaultNow().notNull(),
 });
 
@@ -207,6 +209,7 @@ export const activityLog = mysqlTable("activity_log", {
   action: varchar("action", { length: 128 }).notNull(),
   description: text("description").notNull(),
   metadata: json("metadata").$type<Record<string, unknown>>(),
+  senderProfileId: int("senderProfileId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -245,3 +248,16 @@ export const consentEvents = mysqlTable("consent_events", {
 
 export type ConsentEvent = typeof consentEvents.$inferSelect;
 export type InsertConsentEvent = typeof consentEvents.$inferInsert;
+
+// ─── Sender Profiles ────────────────────────────────────────────────────────
+export const senderProfiles = mysqlTable("sender_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  senderName: varchar("senderName", { length: 256 }).notNull(),
+  senderEmail: varchar("senderEmail", { length: 320 }).notNull(),
+  senderTitle: varchar("senderTitle", { length: 256 }),
+  tone: text("tone"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type SenderProfile = typeof senderProfiles.$inferSelect;
+export type InsertSenderProfile = typeof senderProfiles.$inferInsert;

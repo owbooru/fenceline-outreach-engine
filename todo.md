@@ -151,3 +151,17 @@
 - [x] Change 6: Required sender identification in every message (configurable via env vars)
 - [x] Change 7: Surface consent in UI (Find/CSV import requires consent basis selection)
 - [x] Change 8: Migrations and tests (26 tests passing)
+
+## CASL Gaps to Close
+- [x] Generate proper Drizzle migration files for consent fields and consent_events table
+- [x] Apply append-only triggers on consent_events (no UPDATE, no DELETE)
+- [x] Apply bounce auto-suppress trigger on leads table
+- [x] Audit all send paths and confirm assertSendable is called in each
+- [x] Add consent status badges to Segment/leads list page
+- [x] Add pre-send excluded-recipient count to Campaigns page
+- [x] Add read-only Compliance page showing consent_events log
+
+## DEPLOY.md & Security
+- [x] Add CASL Compliance section to DEPLOY.md (env vars, migration 0005, verification, consequences)
+- [x] Move app password from client-side to server-side enforcement (env var + JWT session)
+- [x] Update DEPLOY.md to remove frontend password edit instruction

@@ -9,6 +9,9 @@ import { scrapeLinkedIn } from "./linkedinScraper";
 import { draftOutreachEmail } from "./emailDrafter";
 import { sendCampaignStep, getQueueStatus, getEmailConfig } from "./emailSender";
 import { handleReply } from "./replyDetector";
+import { getDb } from "./db";
+import { senderProfiles } from "../drizzle/schema";
+import { desc, eq } from "drizzle-orm";
 
 export const appRouter = router({
   system: systemRouter,
@@ -149,6 +152,7 @@ export const appRouter = router({
         sendingDomain: z.string().optional(),
         fromName: z.string().optional(),
         fromEmail: z.string().optional(),
+        senderProfileId: z.number().optional(),
       }))
       .mutation(async ({ input }) => {
         const id = await db.createCampaign(input as any);
@@ -167,6 +171,7 @@ export const appRouter = router({
           fromName: z.string().optional(),
           fromEmail: z.string().optional(),
           scheduledAt: z.string().optional(),
+          senderProfileId: z.number().nullable().optional(),
         }),
       }))
       .mutation(async ({ input }) => {
@@ -187,7 +192,7 @@ export const appRouter = router({
       }))
       .mutation(async ({ input }) => {
         await db.enrollLeadsInCampaign(input.campaignId, input.leadIds);
-        return { success: true };
+        return { success: true, enrolled: input.leadIds.length };
       }),
 
     getLeads: publicProcedure
@@ -433,28 +438,6 @@ export const appRouter = router({
   }),
 
   // ─── AI (email drafting) ─────────────────────────────────────────────────────
-  // ─── Email sending (SMTP queue) ──────────────────────────────────────────────
-  // Their push shipped the sender/queue (emailSender.ts), the tracking routes,
-  // and the Campaigns UI (which calls trpc.email.status / trpc.email.sendStep),
-  // but the router that wires them was missing — added here so sending works.
-  email: router({
-    status: publicProcedure.query(() => ({
-      configured: getEmailConfig() !== null,
-      ...getQueueStatus(),
-    })),
-
-    sendStep: publicProcedure
-      .input(z.object({ campaignId: z.number(), stepId: z.number() }))
-      .mutation(({ input }) => sendCampaignStep(input.campaignId, input.stepId)),
-
-    recordReply: publicProcedure
-      .input(z.object({ leadId: z.number(), campaignId: z.number().optional() }))
-      .mutation(async ({ input }) => {
-        await handleReply(input.leadId, input.campaignId);
-        return { success: true };
-      }),
-  }),
-
   ai: router({
     draftEmail: publicProcedure
       .input(z.object({
@@ -492,6 +475,105 @@ export const appRouter = router({
     check: publicProcedure
       .input(z.object({ email: z.string() }))
       .query(({ input }) => db.isUnsubscribed(input.email)),
+  }),
+
+  // ─── Email Sending ──────────────────────────────────────────────────────────
+  email: router({
+    status: publicProcedure.query(() => {
+      const config = getEmailConfig();
+      const queueStatus = getQueueStatus();
+      return { configured: !!config, ...queueStatus };
+    }),
+    sendStep: publicProcedure
+      .input(z.object({ campaignId: z.number(), stepId: z.number() }))
+      .mutation(async ({ input }) => {
+        return sendCampaignStep(input.campaignId, input.stepId);
+      }),
+  }),
+
+  // ─── Consent Events (read-only compliance log) ─────────────────────────────
+  consent: router({
+    events: publicProcedure
+      .input(z.object({ limit: z.number().optional() }).optional())
+      .query(async ({ input }) => {
+        const database = await getDb();
+        if (!database) return [];
+        const { consentEvents } = await import("../drizzle/schema");
+        const { desc } = await import("drizzle-orm");
+        return database.select().from(consentEvents).orderBy(desc(consentEvents.recordedAt)).limit(input?.limit || 100);
+      }),
+    // Get sendable count for a campaign (how many enrolled leads pass assertSendable)
+    sendableCount: publicProcedure
+      .input(z.object({ campaignId: z.number() }))
+      .query(async ({ input }) => {
+        const database = await getDb();
+        if (!database) return { total: 0, sendable: 0, excluded: 0, reasons: [] as string[] };
+        const { campaignLeads, leads } = await import("../drizzle/schema");
+        const { eq, and } = await import("drizzle-orm");
+        const { checkSendable } = await import("./caslCompliance");
+        const enrolled = await database.select().from(campaignLeads).where(
+          and(eq(campaignLeads.campaignId, input.campaignId), eq(campaignLeads.status, "active"))
+        );
+        let sendable = 0;
+        let excluded = 0;
+        const reasons: string[] = [];
+        for (const enrollment of enrolled) {
+          const [lead] = await database.select().from(leads).where(eq(leads.id, enrollment.leadId)).limit(1);
+          if (!lead) { excluded++; reasons.push("Lead not found"); continue; }
+          const result = await checkSendable(lead);
+          if (result.sendable) { sendable++; } else { excluded++; if (result.reason) reasons.push(result.reason); }
+        }
+        return { total: enrolled.length, sendable, excluded, reasons: Array.from(new Set(reasons)) };
+      }),
+  }),
+
+  // ─── Sender Profiles ──────────────────────────────────────────────────────
+  senderProfiles: router({
+    list: publicProcedure.query(async () => {
+      const database = await getDb();
+      if (!database) return [];
+      return database.select().from(senderProfiles).orderBy(desc(senderProfiles.createdAt));
+    }),
+
+    create: publicProcedure
+      .input(z.object({
+        senderName: z.string().min(1),
+        senderEmail: z.string().email(),
+        senderTitle: z.string().optional(),
+        tone: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        const result = await database.insert(senderProfiles).values(input as any);
+        return { id: (result as any)[0]?.insertId || 0 };
+      }),
+
+    update: publicProcedure
+      .input(z.object({
+        id: z.number(),
+        data: z.object({
+          senderName: z.string().min(1).optional(),
+          senderEmail: z.string().email().optional(),
+          senderTitle: z.string().optional(),
+          tone: z.string().optional(),
+        }),
+      }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        await database.update(senderProfiles).set(input.data as any).where(eq(senderProfiles.id, input.id));
+        return { success: true };
+      }),
+
+    delete: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        const database = await getDb();
+        if (!database) throw new Error("Database not available");
+        await database.delete(senderProfiles).where(eq(senderProfiles.id, input.id));
+        return { success: true };
+      }),
   }),
 
 });

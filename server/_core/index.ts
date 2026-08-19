@@ -9,6 +9,8 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { registerTrackingRoutes } from "../trackingRoutes";
+import { registerAccessGate, accessGateMiddleware } from "../accessGate";
+import { runStartupChecks, getComplianceState } from "../startupChecks";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -30,6 +32,9 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  // ─── Pre-flight checks (exits if env is incomplete) ──────────────────
+  await runStartupChecks();
+
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
@@ -39,6 +44,28 @@ async function startServer() {
   registerOAuthRoutes(app);
   // Tracking routes (open pixel, click redirect, unsubscribe)
   registerTrackingRoutes(app);
+  // Access gate: password login/logout/status endpoints
+  registerAccessGate(app);
+  // Access gate middleware: protects /api/trpc routes with signed session cookie
+  app.use(accessGateMiddleware());
+
+  // Health endpoint — unauthenticated, reports compliance state
+  app.get("/api/health", (_req, res) => {
+    const state = getComplianceState();
+    res.json({
+      status: "ok",
+      database: {
+        engine: state.databaseEngine,
+        connected: state.databaseConnected,
+      },
+      compliance: {
+        triggersPresent: state.triggersPresent,
+        senderIdentificationConfigured: state.senderIdentificationConfigured,
+        enforcementLevel: state.enforcementLevel,
+      },
+    });
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",

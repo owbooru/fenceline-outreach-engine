@@ -39,7 +39,27 @@ PORT=3000
 DATABASE_URL=mysql://user:password@localhost:3306/fenceline
 JWT_SECRET=your-random-secret-here-minimum-32-chars
 
-# Optional: Add these when you have API keys
+# ─── SMTP (required for email sending) ────────────────────────────────────────
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-gmail@gmail.com
+SMTP_PASS=your-app-password
+SMTP_FROM_NAME=Rob McMullen
+SMTP_FROM_EMAIL=your-gmail@gmail.com
+APP_URL=https://your-domain.com
+
+# ─── CASL Sender Identification (required before sending — legal obligation) ──
+CASL_SENDER_NAME=Rob McMullen
+CASL_BUSINESS_NAME=FenceLine
+CASL_MAILING_ADDRESS=Edmonton, AB, Canada
+CASL_CONTACT_PHONE=780-555-0000
+CASL_CONTACT_EMAIL=rob@fenceline.ca
+CASL_CONTACT_WEB=https://fenceline.ca
+
+# ─── App Access Password ──────────────────────────────────────────────────────
+APP_ACCESS_PASSWORD=Fenceline!
+
+# ─── Optional: Add these when you have API keys ──────────────────────────────
 # HUNTER_API_KEY=your-hunter-key
 # APOLLO_API_KEY=your-apollo-key
 # SERPAPI_KEY=your-serpapi-key
@@ -150,6 +170,76 @@ cd /opt/fenceline-lead-engine
 npx drizzle-kit generate && npx drizzle-kit migrate
 ```
 
+## CASL Compliance — Required Before Sending
+
+Canada's Anti-Spam Legislation (CASL) requires valid consent and sender identification in every commercial electronic message. The application self-enforces its compliance requirements on startup — it will not start if configuration is incomplete.
+
+### What happens on startup
+
+1. **Environment validation.** The application checks that all required variables are set and non-empty. If any are missing, it logs each one by name with a description, and exits with a non-zero status code. It does not start with warnings.
+
+2. **Trigger auto-apply.** After connecting to the database, the application detects the engine (`SELECT VERSION()`). On MySQL or MariaDB, it checks `information_schema.TRIGGERS` for the three compliance triggers and creates any that are missing. This is idempotent — safe on every boot. On TiDB, it logs a warning and continues (triggers are unsupported; enforcement is application-level only).
+
+3. **Health endpoint.** `GET /api/health` (unauthenticated) reports the compliance state after startup.
+
+### Required environment variables
+
+The application will not start without these:
+
+```
+DATABASE_URL=mysql://user:password@localhost:3306/fenceline
+JWT_SECRET=your-random-secret-here-minimum-32-chars
+APP_ACCESS_PASSWORD=Fenceline!
+CASL_SENDER_NAME=Rob McMullen
+CASL_BUSINESS_NAME=FenceLine Rentals
+CASL_MAILING_ADDRESS=9871 279 St #112, Acheson, AB T7X 6J4
+CASL_CONTACT_EMAIL=info@fenceline.ca
+```
+
+Plus at least one of:
+
+```
+CASL_CONTACT_PHONE=(780) 720-6300
+CASL_CONTACT_WEB=https://fenceline.ca
+```
+
+CASL requires a working contact method beyond email. Either phone or web satisfies this; both may be set.
+
+### Deployment is now
+
+1. Set `.env` with all required variables
+2. `git pull && pnpm install && pnpm build`
+3. Restart the application (`pm2 restart fenceline` or `docker compose up -d`)
+4. Confirm with `GET /api/health`
+
+The manual `mysql < triggers/casl_triggers.sql` step is no longer required — the application applies the triggers itself on startup.
+
+### Verifying compliance state
+
+```bash
+curl https://your-domain.com/api/health
+```
+
+Expected response (MariaDB):
+
+```json
+{
+  "status": "ok",
+  "database": { "engine": "MariaDB 10.11.x", "connected": true },
+  "compliance": {
+    "triggersPresent": true,
+    "senderIdentificationConfigured": true,
+    "enforcementLevel": "database"
+  }
+}
+```
+
+If `enforcementLevel` is `"application"`, the triggers are not active. On MariaDB/MySQL this means the auto-apply failed — check the application logs. On TiDB this is expected.
+
+### Engine requirement
+
+MariaDB or MySQL supports the compliance triggers. TiDB does not. The VPS deployment installs MariaDB, which is the intended production engine. The canonical trigger definitions remain in `triggers/casl_triggers.sql` — the startup code and the migration file produce identical triggers.
+
 ## Updating the App
 
 ```bash
@@ -193,10 +283,12 @@ docker run ... --shm-size=2g ...
 
 ## Security
 
-- The app password is set in the frontend code (currently "Fenceline!")
-- Change it in `client/src/components/DashboardLayout.tsx`
-- For production, consider adding proper authentication
-- Keep your .env file secure (chmod 600)
+- The app password is enforced **server-side** via the `APP_ACCESS_PASSWORD` environment variable
+- The client submits the password to `POST /api/access/login`; the server validates it and issues a signed JWT session cookie (`fenceline_access`)
+- All `/api/trpc` routes are protected by this cookie — unauthenticated requests receive HTTP 401
+- Tracking routes (`/api/track/*`) remain public so open pixels, click redirects, and unsubscribe pages work without authentication
+- To change the password, update `APP_ACCESS_PASSWORD` in `.env` and restart the app. Do not edit frontend code.
+- Keep your `.env` file secure (`chmod 600`)
 - The app never sends from fenceline.ca — outreach uses isolated domains only
 
 ## Monitoring
@@ -210,4 +302,3 @@ pm2 logs fenceline-lead-engine
 sudo systemctl status nginx
 sudo tail -f /var/log/nginx/access.log
 ```
-
