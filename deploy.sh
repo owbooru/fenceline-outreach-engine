@@ -1,62 +1,40 @@
 #!/usr/bin/env bash
-# Fenceline auto-deploy — idempotent. Pulls latest from origin/main, installs,
-# migrates, builds, restarts, health-checks, and rolls back to the previous
-# commit if the new build fails to build or boot. Safe to run repeatedly.
-#
-# Triggered by the fenceline-deploy.timer (poll) or manually: bash deploy.sh
+# Deploy OUR local `main` only. Does NOT auto-merge upstream — colleague pushes to
+# origin/main are integrated MANUALLY (Scott decides when). This just rebuilds +
+# restarts whenever main's HEAD changes (i.e. after a deliberate merge/commit).
 set -uo pipefail
 
 REPO=/opt/fenceline-outreach-engine
-LOG=/opt/fenceline-deploy.log          # outside the git tree on purpose
+LOG=/opt/fenceline-deploy.log
+STATE=/opt/fenceline-last-deployed        # last successfully-deployed commit
 HEALTH_URL=http://127.0.0.1:3003/
 export PATH=/usr/local/bin:/usr/bin:/bin:$PATH
 
 cd "$REPO" || exit 1
 exec >>"$LOG" 2>&1
-echo "===== deploy $(git rev-parse --short HEAD 2>/dev/null) @ $(date -u +%FT%TZ) ====="
+echo "===== deploy check $(date -u +%FT%TZ) ====="
 
-# Don't deploy on a dirty tree (someone editing live) — bail safely.
-if ! git diff --quiet || ! git diff --cached --quiet; then
-  echo "working tree dirty — skipping auto-deploy"; exit 0
-fi
+# Only ever deploy from main, and never on a dirty tree.
+if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then echo "not on main — skip"; exit 0; fi
+if ! git diff --quiet || ! git diff --cached --quiet; then echo "tree dirty — skip"; exit 0; fi
 
-PREV=$(git rev-parse HEAD)
+# Keep origin refs fresh so manual `git merge origin/main` is easy — but DO NOT merge.
+git fetch origin --quiet 2>/dev/null || true
 
-git fetch origin --quiet || { echo "fetch failed"; exit 1; }
-
-# Integrate upstream. Fast-forward when possible; a real merge otherwise.
-# On conflict, abort and keep the current (working) build live.
-if ! git merge --no-edit origin/main; then
-  echo "MERGE CONFLICT — aborting, keeping $PREV live. Resolve manually."
-  git merge --abort
-  exit 2
-fi
-
-NEW=$(git rev-parse HEAD)
-if [ "$PREV" = "$NEW" ]; then echo "already up to date ($PREV)"; exit 0; fi
-echo "updating $PREV -> $NEW"
-
-rollback() {
-  echo "ROLLBACK -> $PREV"
-  git reset --hard "$PREV"
-  pnpm install >/dev/null 2>&1
-  pnpm build   >/dev/null 2>&1
-  sudo systemctl restart fenceline
-}
+CURRENT=$(git rev-parse HEAD)
+PREV=$(cat "$STATE" 2>/dev/null || echo "")
+if [ "$CURRENT" = "$PREV" ]; then echo "no change ($CURRENT)"; exit 0; fi
+echo "deploying $PREV -> $CURRENT"
 
 set -a; . ./.env; set +a
-
-pnpm install || { echo "install failed"; rollback; exit 3; }
+pnpm install || { echo "install failed — leaving current build running"; exit 3; }
 pnpm db:push  || echo "WARN: db:push failed (continuing — migrations are additive)"
-
-if ! pnpm build; then echo "BUILD FAILED"; rollback; exit 4; fi
+if ! pnpm build; then echo "BUILD FAILED — leaving current build running (not restarting)"; exit 4; fi
 
 sudo systemctl restart fenceline
 sleep 4
-
 CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$HEALTH_URL" || echo 000)
-if [ "$CODE" != "200" ]; then
-  echo "HEALTH CHECK FAILED (HTTP $CODE)"; rollback; exit 5
-fi
+if [ "$CODE" != "200" ]; then echo "HEALTH CHECK FAILED (HTTP $CODE) — investigate; main $CURRENT is live but unhealthy"; exit 5; fi
 
-echo "DEPLOYED $NEW OK (health $CODE)"
+echo "$CURRENT" > "$STATE"
+echo "DEPLOYED $CURRENT OK (health $CODE)"

@@ -50,13 +50,15 @@ sudo systemctl restart fenceline
   Settings page or `.env`. The app runs without them; those integrations stay inert.
 - `.env` is chmod 600 and gitignored — never commit it.
 
-## CI/CD — auto-deploy on new commits
-A systemd timer polls `origin/main` every 2 minutes and deploys new commits.
+## CI/CD — auto-deploy OUR main (no auto-merge)
+A systemd timer deploys **our local `main`** whenever its HEAD changes (checked every 2 min).
+It does **NOT** auto-merge `origin/main` — colleague pushes are integrated **manually** (we
+decide when), so their raw pushes never touch the live site on their own.
 
-- **Engine:** `deploy.sh` — fetch → merge `origin/main` → `pnpm install` → `pnpm db:push` →
-  `pnpm build` → restart → health-check `http://127.0.0.1:3003/`. Rolls back to the previous
-  commit if the build fails or the app doesn't return 200. On a merge conflict it aborts and
-  keeps the current build live (resolve manually, like any conflicting upstream push).
+- **Engine:** `deploy.sh` — fetch (refs only, **no merge**) → if `main` HEAD changed since the
+  last deploy (tracked in `/opt/fenceline-last-deployed`) → `pnpm install` → `pnpm db:push` →
+  `pnpm build` → restart → health-check `http://127.0.0.1:3003/`. If the build fails it leaves
+  the current build running (doesn't restart). Skips entirely on a dirty tree or off-main HEAD.
 - **Trigger:** `fenceline-deploy.timer` → `fenceline-deploy.service` (oneshot, runs as `dev`).
   - Status: `systemctl list-timers fenceline-deploy.timer`
   - Logs: `tail -f /opt/fenceline-deploy.log`
@@ -65,8 +67,8 @@ A systemd timer polls `origin/main` every 2 minutes and deploys new commits.
 - **Git auth (private repo):** repo-local `credential.helper` reads `GITHUB_TOKEN` from
   `/opt/auth_info/.secret` at call time (no token stored in git config). Needed because the
   systemd environment has no interactive credentials.
-- **Behavior to know:** this auto-deploys colleague pushes to `owbooru/main` within ~2 min
-  (rollback protects against a broken build). To gate deploys behind review instead, point the
-  deploy at a repo/branch you control and merge upstream deliberately.
+- **Integrating colleague work:** when you want their latest, do it deliberately:
+  `git fetch origin && git merge origin/main` (resolve conflicts), then the timer deploys it.
+  Their pushes are NOT auto-deployed.
 - **Upgrade to push-triggered (instant):** add a GitHub webhook or a self-hosted Actions runner
   on a repo you admin, calling `deploy.sh`. The poll timer is the zero-setup equivalent.
